@@ -3509,13 +3509,14 @@ class LiteratureManager {
     // Load data from public GitHub repository (no token required)
     async loadPublicGitHubData() {
         try {
-            const url = `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/main/papers.json`;
-            console.log('Fetching public data from:', url);
+            // Use GitHub API instead of raw.githubusercontent.com to avoid CORS issues
+            const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/contents/papers.json`;
+            console.log('Fetching public data from GitHub API:', url);
             
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    'Accept': 'application/vnd.github.v3+json',
                     'Cache-Control': 'no-cache'
                 }
             });
@@ -3524,14 +3525,22 @@ class LiteratureManager {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            const data = await response.json();
+            const fileData = await response.json();
             
-            if (Array.isArray(data)) {
-                console.log(`Successfully loaded ${data.length} papers from public GitHub`);
-                return data;
+            // GitHub API returns base64 encoded content
+            if (fileData.content && fileData.encoding === 'base64') {
+                const decodedContent = atob(fileData.content);
+                const data = JSON.parse(decodedContent);
+                
+                if (Array.isArray(data)) {
+                    console.log(`Successfully loaded ${data.length} papers from public GitHub API`);
+                    return data;
+                } else {
+                    console.error('Invalid data format from public GitHub:', data);
+                    return [];
+                }
             } else {
-                console.error('Invalid data format from public GitHub:', data);
-                return [];
+                throw new Error('Invalid file format from GitHub API');
             }
             
         } catch (error) {
