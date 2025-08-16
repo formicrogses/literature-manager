@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GitHub同步调试工具</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        .loading { color: orange; }
+    </style>
+    <script src="config.js"></script>
+    <script src="github-sync.js"></script>
+</head>
+<body>
+    <h1>🔧 GitHub同步调试工具</h1>
+    
+    <div class="test-section">
+        <h3>1. 配置检查</h3>
+        <button onclick="checkConfig()">检查配置</button>
+        <div id="configResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. GitHub API测试</h3>
+        <button onclick="testAPI()">测试API连接</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 仓库权限测试</h3>
+        <button onclick="testRepository()">测试仓库权限</button>
+        <div id="repoResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. 文件上传测试</h3>
+        <button onclick="testUpload()">测试文件上传</button>
+        <div id="uploadResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>5. 完整同步测试</h3>
+        <button onclick="fullSyncTest()">完整同步测试</button>
+        <div id="fullSyncResult"></div>
+    </div>
+    
+    <script>
+    function log(elementId, message, type = 'info') {
+        const element = document.getElementById(elementId);
+        const timestamp = new Date().toLocaleTimeString();
+        const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'loading' ? 'loading' : 'info';
+        element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+    }
+    
+    function clearLog(elementId) {
+        document.getElementById(elementId).innerHTML = '';
+    }
+    
+    async function checkConfig() {
+        clearLog('configResult');
+        log('configResult', '正在检查配置...', 'loading');
+        
+        try {
+            // 检查基本配置
+            log('configResult', `用户名: ${window.GITHUB_CONFIG.username}`);
+            log('configResult', `仓库名: ${window.GITHUB_CONFIG.dataRepo}`);
+            log('configResult', `Token长度: ${window.GITHUB_CONFIG.token.length}`);
+            log('configResult', `API地址: ${window.GITHUB_CONFIG.apiBase}`);
+            
+            // 检查状态
+            const status = window.getGitHubStatus();
+            if (status.configured) {
+                log('configResult', '✅ 配置状态: 已配置', 'success');
+            } else {
+                log('configResult', '❌ 配置状态: 未配置', 'error');
+            }
+            
+            // 检查GitHubSync对象
+            if (typeof GitHubSync !== 'undefined') {
+                log('configResult', '✅ GitHubSync类: 可用', 'success');
+                const githubSync = new GitHubSync();
+                if (githubSync.isConfigured()) {
+                    log('configResult', '✅ GitHubSync实例: 已配置', 'success');
+                } else {
+                    log('configResult', '❌ GitHubSync实例: 未配置', 'error');
+                }
+            } else {
+                log('configResult', '❌ GitHubSync类: 不可用', 'error');
+            }
+            
+        } catch (error) {
+            log('configResult', `❌ 配置检查失败: ${error.message}`, 'error');
+        }
+    }
+    
+    async function testAPI() {
+        clearLog('apiResult');
+        log('apiResult', '正在测试GitHub API连接...', 'loading');
+        
+        try {
+            const response = await fetch('https://api.github.com/user', {
+                headers: {
+                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            
+            if (response.ok) {
+                const userData = await response.json();
+                log('apiResult', `✅ API连接成功`, 'success');
+                log('apiResult', `用户信息: ${userData.login} (${userData.name || 'N/A'})`);
+                log('apiResult', `权限范围: ${response.headers.get('x-oauth-scopes') || '未知'}`);
+            } else {
+                const error = await response.json();
+                log('apiResult', `❌ API连接失败: ${response.status} ${response.statusText}`, 'error');
+                log('apiResult', `错误详情: ${error.message}`);
+            }
+        } catch (error) {
+            log('apiResult', `❌ 网络连接失败: ${error.message}`, 'error');
+        }
+    }
+    
+    async function testRepository() {
+        clearLog('repoResult');
+        log('repoResult', '正在测试仓库权限...', 'loading');
+        
+        try {
+            const repoUrl = `https://api.github.com/repos/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}`;
+            log('repoResult', `测试仓库: ${repoUrl}`);
+            
+            const response = await fetch(repoUrl, {
+                headers: {
+                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            
+            if (response.ok) {
+                const repoData = await response.json();
+                log('repoResult', `✅ 仓库访问成功`, 'success');
+                log('repoResult', `仓库名称: ${repoData.full_name}`);
+                log('repoResult', `仓库权限: ${repoData.permissions ? JSON.stringify(repoData.permissions) : '未知'}`);
+                log('repoResult', `默认分支: ${repoData.default_branch}`);
+            } else if (response.status === 404) {
+                log('repoResult', `❌ 仓库不存在: ${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}`, 'error');
+                log('repoResult', '请检查仓库名称是否正确，或者创建该仓库');
+            } else if (response.status === 403) {
+                log('repoResult', `❌ 权限不足: 无法访问仓库`, 'error');
+                log('repoResult', '请检查Token权限或仓库访问权限');
+            } else {
+                const error = await response.json();
+                log('repoResult', `❌ 仓库访问失败: ${response.status} ${response.statusText}`, 'error');
+                log('repoResult', `错误详情: ${error.message}`);
+            }
+        } catch (error) {
+            log('repoResult', `❌ 仓库测试失败: ${error.message}`, 'error');
+        }
+    }
+    
+    async function testUpload() {
+        clearLog('uploadResult');
+        log('uploadResult', '正在测试文件上传...', 'loading');
+        
+        try {
+            const githubSync = new GitHubSync();
+            
+            const testData = {
+                test: true,
+                timestamp: new Date().toISOString(),
+                message: '这是一个测试文件',
+                randomId: Math.random().toString(36).substr(2, 9)
+            };
+            
+            log('uploadResult', '正在上传测试文件...');
+            const result = await githubSync.uploadFile(
+                'debug-test.json',
+                JSON.stringify(testData, null, 2),
+                '调试工具: 测试文件上传功能'
+            );
+            
+            log('uploadResult', '✅ 文件上传成功', 'success');
+            log('uploadResult', `文件URL: ${result.content.html_url}`);
+            log('uploadResult', `SHA: ${result.content.sha}`);
+            
+        } catch (error) {
+            log('uploadResult', `❌ 文件上传失败: ${error.message}`, 'error');
+            if (error.message.includes('does not match')) {
+                log('uploadResult', '这是SHA冲突错误，应该会自动重试');
+            }
+        }
+    }
+    
+    async function fullSyncTest() {
+        clearLog('fullSyncResult');
+        log('fullSyncResult', '正在进行完整同步测试...', 'loading');
+        
+        try {
+            const githubSync = new GitHubSync();
+            
+            // 测试论文数据
+            const testPapers = [
+                {
+                    id: 1,
+                    title: "测试论文1",
+                    authors: ["测试作者"],
+                    year: 2024,
+                    journal: "测试期刊",
+                    abstract: "这是一个测试论文的摘要"
+                },
+                {
+                    id: 2,
+                    title: "测试论文2", 
+                    authors: ["另一个作者"],
+                    year: 2023,
+                    journal: "另一个期刊",
+                    abstract: "这是另一个测试论文的摘要"
+                }
+            ];
+            
+            log('fullSyncResult', '正在同步测试论文数据...');
+            await githubSync.syncAllData(testPapers);
+            
+            log('fullSyncResult', '✅ 完整同步测试成功', 'success');
+            log('fullSyncResult', `已同步 ${testPapers.length} 篇测试论文`);
+            log('fullSyncResult', '请检查GitHub仓库中的papers.json文件');
+            
+        } catch (error) {
+            log('fullSyncResult', `❌ 完整同步测试失败: ${error.message}`, 'error');
+            console.error('Full sync test error:', error);
+        }
+    }
+    
+    // 页面加载时自动检查配置
+    window.addEventListener('load', () => {
+        setTimeout(checkConfig, 500);
+    });
+    </script>
+</body>
+</html>

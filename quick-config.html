@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>检查GitHub配置</title>
+    <script src="config.js"></script>
+</head>
+<body>
+    <h1>GitHub配置状态</h1>
+    <div id="status"></div>
+    
+    <h2>快速配置</h2>
+    <p>用户名: <input type="text" id="username" value="wazgtam1"></p>
+    <p>Token: <input type="text" id="token" placeholder="输入你的GitHub Token"></p>
+    <button onclick="saveConfig()">保存配置</button>
+    
+    <script>
+    function checkConfig() {
+        const statusDiv = document.getElementById('status');
+        
+        // 检查localStorage
+        const savedUsername = localStorage.getItem('github_username');
+        const savedToken = localStorage.getItem('github_token');
+        
+        statusDiv.innerHTML = `
+            <h3>当前配置状态:</h3>
+            <p>配置文件用户名: ${window.GITHUB_CONFIG.username}</p>
+            <p>配置文件Token: ${window.GITHUB_CONFIG.token ? '已设置 (' + window.GITHUB_CONFIG.token.length + ' 字符)' : '未设置'}</p>
+            <p>localStorage用户名: ${savedUsername || '未保存'}</p>
+            <p>localStorage Token: ${savedToken ? '已保存 (' + savedToken.length + ' 字符)' : '未保存'}</p>
+            <p>配置状态: ${window.getGitHubStatus().configured ? '✅ 已配置' : '❌ 未配置'}</p>
+        `;
+        
+        // 如果localStorage中有配置，自动加载
+        if (savedToken) {
+            document.getElementById('token').value = savedToken;
+        }
+    }
+    
+    function saveConfig() {
+        const username = document.getElementById('username').value;
+        const token = document.getElementById('token').value;
+        
+        if (username && token) {
+            window.setupGitHub(username, token);
+            alert('配置已保存！');
+            checkConfig();
+        } else {
+            alert('请填写用户名和Token');
+        }
+    }
+    
+    // 页面加载时检查配置
+    window.addEventListener('load', () => {
+        setTimeout(checkConfig, 500);
+    });
+    </script>
+</body>
+</html>
