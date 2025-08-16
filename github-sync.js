@@ -289,6 +289,45 @@ class GitHubSync {
             dataUrl: `https://raw.githubusercontent.com/${this.config.username}/${this.config.dataRepo}/main/${this.config.paths.papers}`
         };
     }
+    
+    // 删除GitHub文件
+    async deleteFile(path) {
+        if (!this.isConfigured()) {
+            throw new Error('GitHub未配置，请先配置GitHub信息');
+        }
+
+        try {
+            // 首先获取文件的SHA
+            const sha = await this.getFileSHA(path);
+            if (!sha) {
+                console.log(`File ${path} not found, nothing to delete`);
+                return;
+            }
+
+            const response = await fetch(`${this.baseUrl}/contents/${path}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `token ${this.config.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `Delete file: ${path}`,
+                    sha: sha
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`删除文件失败: ${errorData.message}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`Failed to delete file ${path}:`, error);
+            throw error;
+        }
+    }
 }
 
 // 全局实例

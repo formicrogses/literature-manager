@@ -460,6 +460,15 @@ class LiteratureManager {
                 this.closePdfViewer();
             }
         });
+        
+        // Delete functionality events
+        document.getElementById('deleteSelectedBtn').addEventListener('click', () => {
+            this.deleteSelectedPapers();
+        });
+        
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            this.clearAllPapers();
+        });
     }
     
     initializeFilters() {
@@ -630,9 +639,14 @@ class LiteratureManager {
         }
         
         container.innerHTML = paginatedPapers.map(paper => `
-            <div class="paper-card" onclick="literatureManager.showPaperDetails(${paper.id})">
+            <div class="paper-card" data-paper-id="${paper.id}">
                 <div class="paper-card-header">
-                    <div class="paper-image-container">
+                    <div class="paper-select-container">
+                        <input type="checkbox" class="paper-select-checkbox" 
+                               data-paper-id="${paper.id}" 
+                               onclick="event.stopPropagation(); literatureManager.handlePaperSelection(this)">
+                    </div>
+                    <div class="paper-image-container" onclick="literatureManager.showPaperDetails(${paper.id})">
                         ${paper.thumbnail ? 
                             `<img src="${paper.thumbnail}" alt="PDF Preview" class="paper-thumbnail" />` :
                             `<div class="paper-icon">${this.getPaperIcon(paper.researchArea)}</div>`
@@ -641,8 +655,11 @@ class LiteratureManager {
                             <div class="overlay-icon">📷</div>
                         </div>
                     </div>
+                    <div class="paper-delete-btn" onclick="event.stopPropagation(); literatureManager.deleteSinglePaper(${paper.id})" title="Delete this paper">
+                        <span>🗑️</span>
+                    </div>
                 </div>
-                <div class="paper-card-content">
+                <div class="paper-card-content" onclick="literatureManager.showPaperDetails(${paper.id})">
                     <h3 class="paper-card-title">${paper.title}</h3>
                     <div class="paper-card-meta">
                         <div class="paper-card-authors">${paper.authors.join(', ')}</div>
@@ -1988,7 +2005,8 @@ class LiteratureManager {
                         pdfFileSize: processedFile.size, // Store compressed file size
                         originalFileSize: file.size, // Store original file size for reference
                         isCompressed: file.size !== processedFile.size,
-                        isPersistentPDF: true // Flag to indicate this PDF will persist
+                        isPersistentPDF: true, // Flag to indicate this PDF will persist
+                        pdfFile: processedFile // 关键修复：传递实际的PDF文件对象用于GitHub上传
                     };
                 } catch (pdfError) {
                     console.warn('PDF.js parsing failed:', pdfError);
@@ -2067,7 +2085,8 @@ class LiteratureManager {
             originalFileSize: file.size,
             isCompressed: processedFile ? (file.size !== processedFile.size) : false,
             isPersistentPDF: !!pdfBase64,
-            parseWarning: true // Flag to indicate parsing had issues
+            parseWarning: true, // Flag to indicate parsing had issues
+            pdfFile: actualFile // 关键修复：传递实际的PDF文件对象用于GitHub上传
         };
     }
     
@@ -3070,6 +3089,227 @@ class LiteratureManager {
             banner.style.background = 'linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%)';
         } else {
             banner.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }
+    }
+    
+    // ============ DELETE FUNCTIONALITY ============
+    
+    // Handle paper selection checkbox
+    handlePaperSelection(checkbox) {
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+        const checkedBoxes = document.querySelectorAll('.paper-select-checkbox:checked');
+        
+        // Enable/disable delete selected button based on selections
+        deleteBtn.disabled = checkedBoxes.length === 0;
+        
+        // Update button text with count
+        if (checkedBoxes.length > 0) {
+            deleteBtn.innerHTML = `<span>🗑️</span> Delete Selected (${checkedBoxes.length})`;
+        } else {
+            deleteBtn.innerHTML = `<span>🗑️</span> Delete Selected`;
+        }
+    }
+    
+    // Delete single paper
+    async deleteSinglePaper(paperId) {
+        const paper = this.papers.find(p => p.id === paperId);
+        if (!paper) {
+            this.showNotification('Paper not found', 'error');
+            return;
+        }
+        
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete "${paper.title}"?\n\nThis action cannot be undone.`);
+        if (!confirmed) return;
+        
+        try {
+            // Remove from local array
+            this.papers = this.papers.filter(p => p.id !== paperId);
+            
+            // Save to storage
+            await this.saveData();
+            
+            // Sync deletion to GitHub
+            if (window.githubSync && window.githubSync.isConfigured()) {
+                try {
+                    await window.githubSync.syncAllData(this.papers);
+                    await this.deletePaperFromGitHub(paper);
+                    this.showNotification('Paper deleted and synced to cloud!', 'success');
+                } catch (syncError) {
+                    console.error('GitHub sync failed:', syncError);
+                    this.showNotification('Paper deleted locally, but cloud sync failed', 'warning');
+                }
+            } else {
+                this.showNotification('Paper deleted locally', 'success');
+            }
+            
+            // Refresh the display
+            this.applyFilters();
+            this.initializeFilters();
+            
+        } catch (error) {
+            console.error('Error deleting paper:', error);
+            this.showNotification('Failed to delete paper: ' + error.message, 'error');
+        }
+    }
+    
+    // Delete selected papers
+    async deleteSelectedPapers() {
+        const checkedBoxes = document.querySelectorAll('.paper-select-checkbox:checked');
+        const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.paperId));
+        
+        if (selectedIds.length === 0) {
+            this.showNotification('No papers selected', 'warning');
+            return;
+        }
+        
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete ${selectedIds.length} selected paper${selectedIds.length > 1 ? 's' : ''}?\n\nThis action cannot be undone.`);
+        if (!confirmed) return;
+        
+        try {
+            // Get papers to be deleted (for GitHub cleanup)
+            const papersToDelete = this.papers.filter(p => selectedIds.includes(p.id));
+            
+            // Remove from local array
+            this.papers = this.papers.filter(p => !selectedIds.includes(p.id));
+            
+            // Save to storage
+            await this.saveData();
+            
+            // Sync deletion to GitHub
+            if (window.githubSync && window.githubSync.isConfigured()) {
+                try {
+                    await window.githubSync.syncAllData(this.papers);
+                    
+                    // Delete individual files from GitHub
+                    for (const paper of papersToDelete) {
+                        await this.deletePaperFromGitHub(paper);
+                    }
+                    
+                    this.showNotification(`${selectedIds.length} papers deleted and synced to cloud!`, 'success');
+                } catch (syncError) {
+                    console.error('GitHub sync failed:', syncError);
+                    this.showNotification(`${selectedIds.length} papers deleted locally, but cloud sync failed`, 'warning');
+                }
+            } else {
+                this.showNotification(`${selectedIds.length} papers deleted locally`, 'success');
+            }
+            
+            // Refresh the display
+            this.applyFilters();
+            this.initializeFilters();
+            
+            // Reset delete button
+            document.getElementById('deleteSelectedBtn').disabled = true;
+            document.getElementById('deleteSelectedBtn').innerHTML = `<span>🗑️</span> Delete Selected`;
+            
+        } catch (error) {
+            console.error('Error deleting papers:', error);
+            this.showNotification('Failed to delete papers: ' + error.message, 'error');
+        }
+    }
+    
+    // Clear all papers
+    async clearAllPapers() {
+        if (this.papers.length === 0) {
+            this.showNotification('No papers to delete', 'info');
+            return;
+        }
+        
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to DELETE ALL ${this.papers.length} papers?\n\nThis will remove ALL your research papers permanently!\nThis action cannot be undone.`);
+        if (!confirmed) return;
+        
+        // Double confirmation for safety
+        const doubleConfirm = confirm(`FINAL CONFIRMATION:\n\nYou are about to delete ${this.papers.length} papers permanently.\n\nAre you absolutely sure?`);
+        if (!doubleConfirm) return;
+        
+        try {
+            const paperCount = this.papers.length;
+            const papersToDelete = [...this.papers]; // Copy for GitHub cleanup
+            
+            // Clear local array
+            this.papers = [];
+            
+            // Save to storage
+            await this.saveData();
+            
+            // Sync deletion to GitHub
+            if (window.githubSync && window.githubSync.isConfigured()) {
+                try {
+                    await window.githubSync.syncAllData(this.papers); // Empty array
+                    
+                    // Delete individual files from GitHub
+                    for (const paper of papersToDelete) {
+                        await this.deletePaperFromGitHub(paper);
+                    }
+                    
+                    this.showNotification(`All ${paperCount} papers cleared and synced to cloud!`, 'success');
+                } catch (syncError) {
+                    console.error('GitHub sync failed:', syncError);
+                    this.showNotification(`All ${paperCount} papers cleared locally, but cloud sync failed`, 'warning');
+                }
+            } else {
+                this.showNotification(`All ${paperCount} papers cleared locally`, 'success');
+            }
+            
+            // Refresh the display
+            this.applyFilters();
+            this.initializeFilters();
+            
+            // Reset delete button
+            document.getElementById('deleteSelectedBtn').disabled = true;
+            document.getElementById('deleteSelectedBtn').innerHTML = `<span>🗑️</span> Delete Selected`;
+            
+        } catch (error) {
+            console.error('Error clearing papers:', error);
+            this.showNotification('Failed to clear papers: ' + error.message, 'error');
+        }
+    }
+    
+    // Delete paper files from GitHub
+    async deletePaperFromGitHub(paper) {
+        if (!window.githubSync || !window.githubSync.isConfigured()) {
+            return;
+        }
+        
+        try {
+            // Extract filenames from URLs if they exist
+            const filesToDelete = [];
+            
+            if (paper.pdfUrl && paper.pdfUrl.includes('github.com')) {
+                const pdfPath = this.extractGitHubPath(paper.pdfUrl);
+                if (pdfPath) filesToDelete.push(pdfPath);
+            }
+            
+            if (paper.thumbnail && paper.thumbnail.includes('github.com')) {
+                const thumbPath = this.extractGitHubPath(paper.thumbnail);
+                if (thumbPath) filesToDelete.push(thumbPath);
+            }
+            
+            // Delete files from GitHub
+            for (const filePath of filesToDelete) {
+                try {
+                    await window.githubSync.deleteFile(filePath);
+                    console.log(`Deleted ${filePath} from GitHub`);
+                } catch (error) {
+                    console.warn(`Failed to delete ${filePath} from GitHub:`, error);
+                }
+            }
+            
+        } catch (error) {
+            console.warn('Error deleting paper files from GitHub:', error);
+        }
+    }
+    
+    // Extract GitHub file path from URL
+    extractGitHubPath(url) {
+        try {
+            const match = url.match(/github\.com\/[^\/]+\/[^\/]+\/[^\/]+\/[^\/]+\/(.+)$/);
+            return match ? match[1] : null;
+        } catch (error) {
+            return null;
         }
     }
 }

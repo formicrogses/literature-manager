@@ -980,6 +980,24 @@ select.form-control {
   font-size: var(--font-size-sm);
 }
 
+/* Delete Controls */
+.delete-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.delete-controls .btn {
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.delete-controls .btn span {
+  font-size: var(--font-size-xs);
+}
+
 .view-info {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
@@ -1026,6 +1044,55 @@ select.form-control {
   flex-shrink: 0;
   overflow: hidden;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Paper Selection Checkbox */
+.paper-select-container {
+  position: absolute;
+  top: var(--space-8);
+  left: var(--space-8);
+  z-index: 3;
+}
+
+.paper-select-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+/* Paper Delete Button */
+.paper-delete-btn {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--duration-normal);
+  backdrop-filter: blur(4px);
+}
+
+.paper-card:hover .paper-delete-btn {
+  opacity: 1;
+}
+
+.paper-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.95);
+  transform: scale(1.1);
+}
+
+.paper-delete-btn span {
+  font-size: 14px;
 }
 
 .paper-image-container {
@@ -2496,6 +2563,16 @@ select.form-control {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-12);
+  }
+  
+  .delete-controls {
+    justify-content: center;
+    margin-top: var(--space-8);
+  }
+  
+  .delete-controls .btn {
+    font-size: var(--font-size-xs);
+    padding: var(--space-8) var(--space-12);
   }
   
   .stats-summary {
