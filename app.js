@@ -1837,12 +1837,21 @@ class LiteratureManager {
                     .map(f => f.result);
                 
                 console.log(`开始批量同步 ${successfulPapers.length} 篇论文到GitHub`);
+                console.log('成功的论文列表:', successfulPapers.map(p => ({ id: p.id, title: p.title, hasPDF: !!p.pdfFile })));
                 
-                // 同步每个论文的PDF文件
-                for (const paper of successfulPapers) {
+                // 同步每个论文的PDF文件（添加延迟避免冲突）
+                for (let i = 0; i < successfulPapers.length; i++) {
+                    const paper = successfulPapers[i];
                     if (paper.pdfFile) {
                         try {
+                            // 添加小延迟确保时间戳唯一性
+                            if (i > 0) {
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
+                            
+                            console.log(`正在同步第 ${i + 1}/${successfulPapers.length} 个PDF: ${paper.title}`);
                             const syncedPaper = await window.githubSync.syncPaper(paper, paper.pdfFile);
+                            
                             // 更新论文信息（替换本地URL为GitHub URL）
                             const paperIndex = this.papers.findIndex(p => p.id === paper.id);
                             if (paperIndex !== -1) {

@@ -196,8 +196,10 @@ class GitHubSync {
         this.isUploading = true;
 
         try {
+            // 使用更精确的时间戳和随机数确保文件名唯一性
             const timestamp = Date.now();
-            const filename = `paper-${paper.id}-${timestamp}`;
+            const randomSuffix = Math.random().toString(36).substr(2, 5);
+            const filename = `paper-${paper.id}-${timestamp}-${randomSuffix}`;
             const pdfFilename = `${filename}.pdf`;
             const thumbFilename = `${filename}.jpg`;
 
