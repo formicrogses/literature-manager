@@ -44,37 +44,52 @@ class GitHubSync {
     }
 
     // 上传文件到GitHub
-    async uploadFile(path, content, message, isBase64 = false) {
+    async uploadFile(path, content, message, isBase64 = false, forceSHA = null) {
         if (!this.isConfigured()) {
             throw new Error('GitHub未配置，请先配置GitHub信息');
         }
 
-        const sha = await this.getFileSHA(path);
-        const body = {
-            message: message,
-            content: isBase64 ? content : btoa(unescape(encodeURIComponent(content)))
-        };
+        try {
+            // 如果提供了forceSHA，使用它；否则重新获取最新的SHA
+            const sha = forceSHA || await this.getFileSHA(path);
+            
+            const body = {
+                message: message,
+                content: isBase64 ? content : btoa(unescape(encodeURIComponent(content)))
+            };
 
-        if (sha) {
-            body.sha = sha; // 更新现有文件
+            if (sha) {
+                body.sha = sha; // 更新现有文件
+            }
+
+            const response = await fetch(`${this.baseUrl}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${this.config.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                
+                // 如果是SHA不匹配错误，重新获取SHA并重试一次
+                if (error.message && error.message.includes('does not match') && !forceSHA) {
+                    console.log('SHA不匹配，重新获取最新SHA并重试...');
+                    const latestSHA = await this.getFileSHA(path);
+                    return await this.uploadFile(path, content, message, isBase64, latestSHA);
+                }
+                
+                throw new Error(`GitHub API错误: ${error.message}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('上传文件失败:', path, error);
+            throw error;
         }
-
-        const response = await fetch(`${this.baseUrl}/contents/${path}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${this.config.token}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`GitHub API错误: ${error.message}`);
-        }
-
-        return await response.json();
     }
 
     // 上传PDF文件

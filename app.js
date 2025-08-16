@@ -2468,7 +2468,20 @@ class LiteratureManager {
                 
             } catch (error) {
                 console.error('GitHub sync failed:', error);
-                this.showNotification('云端同步失败：' + error.message, 'warning');
+                
+                // 根据错误类型提供不同的提示
+                let errorMessage = '云端同步失败：';
+                if (error.message.includes('does not match')) {
+                    errorMessage += '文件版本冲突，已自动重试';
+                } else if (error.message.includes('401')) {
+                    errorMessage += 'GitHub Token无效，请重新配置';
+                } else if (error.message.includes('404')) {
+                    errorMessage += '仓库不存在，请检查配置';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                this.showNotification(errorMessage, 'warning');
                 this.updateSyncBanner('云端同步失败，仅保存到本地', 'warning');
             }
         } else {
