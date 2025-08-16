@@ -88,29 +88,9 @@ class LiteratureManager {
                 }
             } catch (error) {
                 console.error('Failed to load from GitHub:', error);
-                this.showNotification('GitHub加载失败，尝试公共数据: ' + error.message, 'warning');
+                this.showNotification('GitHub加载失败，使用本地数据: ' + error.message, 'warning');
+                this.updateSyncBanner('GitHub加载失败，使用本地数据', 'warning');
             }
-        }
-        
-        // 2. 尝试从公共GitHub仓库加载数据（无需token）
-        try {
-            console.log('Loading public data from GitHub...');
-            this.updateSyncBanner('正在加载公共数据...', 'loading');
-            const publicPapers = await this.loadPublicGitHubData();
-            if (publicPapers && publicPapers.length > 0) {
-                this.papers = publicPapers;
-                this.filteredPapers = [...this.papers];
-                console.log('Loaded', this.papers.length, 'papers from public GitHub');
-                
-                setTimeout(() => {
-                    this.showNotification(`已加载 ${this.papers.length} 篇公共论文`, 'success');
-                    this.updateSyncBanner(`公共数据已加载 - 共 ${this.papers.length} 篇论文`, 'success');
-                }, 500);
-                return;
-            }
-        } catch (error) {
-            console.error('Failed to load public data from GitHub:', error);
-            this.updateSyncBanner('公共数据加载失败，使用本地数据', 'warning');
         }
         
         // 2. 降级到IndexedDB本地数据
