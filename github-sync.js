@@ -382,6 +382,103 @@ class GitHubSync {
             throw error;
         }
     }
+    
+    // 强制清理整个仓库的方法
+    async forceCleanRepository() {
+        if (!this.isConfigured()) {
+            throw new Error('GitHub未配置，请先配置GitHub信息');
+        }
+
+        try {
+            console.log('开始强制清理GitHub仓库...');
+            
+            // 获取仓库根目录内容
+            const response = await fetch(`${this.baseUrl}/contents`, {
+                headers: {
+                    'Authorization': `token ${this.config.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('无法获取仓库内容');
+            }
+
+            const contents = await response.json();
+            
+            // 要删除的文件和文件夹
+            const itemsToDelete = ['pdfs', 'thumbnails', 'papers.json', 'public-papers.json', 'debug-test.json'];
+            
+            for (const itemName of itemsToDelete) {
+                const item = contents.find(c => c.name === itemName);
+                if (!item) {
+                    console.log(`跳过 ${itemName} (不存在)`);
+                    continue;
+                }
+
+                if (item.type === 'dir') {
+                    await this.deleteDirectory(itemName);
+                } else if (item.type === 'file') {
+                    await this.deleteFile(itemName);
+                }
+                
+                // 添加延迟避免API限制
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            console.log('强制清理完成');
+            return true;
+            
+        } catch (error) {
+            console.error('强制清理失败:', error);
+            throw error;
+        }
+    }
+    
+    // 递归删除目录及其所有内容
+    async deleteDirectory(dirPath) {
+        try {
+            console.log(`开始删除目录: ${dirPath}`);
+            
+            // 获取目录内容
+            const response = await fetch(`${this.baseUrl}/contents/${dirPath}`, {
+                headers: {
+                    'Authorization': `token ${this.config.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!response.ok) {
+                console.log(`目录 ${dirPath} 不存在或已删除`);
+                return;
+            }
+
+            const contents = await response.json();
+            
+            // 先删除所有文件
+            for (const item of contents) {
+                if (item.type === 'file') {
+                    try {
+                        await this.deleteFile(item.path);
+                        console.log(`已删除文件: ${item.path}`);
+                        // 添加延迟避免API限制
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } catch (error) {
+                        console.warn(`删除文件失败: ${item.path}`, error.message);
+                    }
+                } else if (item.type === 'dir') {
+                    // 递归删除子目录
+                    await this.deleteDirectory(item.path);
+                }
+            }
+            
+            console.log(`目录 ${dirPath} 已清空`);
+            
+        } catch (error) {
+            console.error(`删除目录失败: ${dirPath}`, error);
+            throw error;
+        }
+    }
 }
 
 // 全局实例

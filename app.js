@@ -3356,12 +3356,11 @@ class LiteratureManager {
             // Sync deletion to GitHub
             if (window.githubSync && window.githubSync.isConfigured()) {
                 try {
-                    await window.githubSync.syncAllData(this.papers); // Empty array
+                    // 使用强制清理方法清空整个仓库
+                    await window.githubSync.forceCleanRepository();
                     
-                    // Delete individual files from GitHub
-                    for (const paper of papersToDelete) {
-                        await this.deletePaperFromGitHub(paper);
-                    }
+                    // 同步空的数据文件
+                    await window.githubSync.syncAllData(this.papers); // Empty array
                     
                     // 同步公共数据快照到主仓库（用于访客访问）
                     await this.syncPublicDataSnapshot();
