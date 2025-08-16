@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GitHub同步测试</title>
+    <script src="config.js"></script>
+    <script src="github-sync.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 GitHub同步功能测试</h1>
+    
+    <div>
+        <h3>步骤1: 配置GitHub</h3>
+        <p>用户名: <input type="text" id="username" value="wazgtam1"></p>
+        <p>Token: <input type="password" id="token" placeholder="输入GitHub Token"></p>
+        <button onclick="configureGitHub()">配置GitHub</button>
+        <div id="configResult"></div>
+    </div>
+    
+    <div>
+        <h3>步骤2: 测试上传</h3>
+        <button onclick="testUpload()">测试上传papers.json</button>
+        <div id="uploadResult"></div>
+    </div>
+    
+    <div>
+        <h3>步骤3: 测试PDF上传</h3>
+        <button onclick="testPDFUpload()">测试上传PDF文件</button>
+        <div id="pdfResult"></div>
+    </div>
+    
+    <script>
+    function addResult(elementId, message, type = 'info') {
+        const element = document.getElementById(elementId);
+        const div = document.createElement('div');
+        div.className = `result ${type}`;
+        div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+        element.appendChild(div);
+    }
+    
+    function clearResults(elementId) {
+        document.getElementById(elementId).innerHTML = '';
+    }
+    
+    async function configureGitHub() {
+        clearResults('configResult');
+        
+        const username = document.getElementById('username').value;
+        const token = document.getElementById('token').value;
+        
+        if (!username || !token) {
+            addResult('configResult', '请填写用户名和Token', 'error');
+            return;
+        }
+        
+        try {
+            // 设置配置
+            window.GITHUB_CONFIG.username = username;
+            window.GITHUB_CONFIG.token = token;
+            localStorage.setItem('github_username', username);
+            localStorage.setItem('github_token', token);
+            
+            addResult('configResult', '配置已保存到localStorage', 'success');
+            
+            // 测试连接
+            const githubSync = new GitHubSync();
+            const testResult = await githubSync.testConnection();
+            
+            if (testResult.success) {
+                addResult('configResult', `✅ GitHub连接成功: ${testResult.message}`, 'success');
+            } else {
+                addResult('configResult', `❌ GitHub连接失败: ${testResult.message}`, 'error');
+            }
+            
+        } catch (error) {
+            addResult('configResult', `❌ 配置失败: ${error.message}`, 'error');
+        }
+    }
+    
+    async function testUpload() {
+        clearResults('uploadResult');
+        
+        try {
+            const githubSync = new GitHubSync();
+            
+            if (!githubSync.isConfigured()) {
+                addResult('uploadResult', '请先配置GitHub', 'error');
+                return;
+            }
+            
+            addResult('uploadResult', '正在创建测试数据...', 'info');
+            
+            // 创建测试论文数据
+            const testPapers = [
+                {
+                    id: 1,
+                    title: "测试论文：手势识别技术研究",
+                    authors: ["张三", "李四"],
+                    year: 2024,
+                    journal: "计算机视觉学报",
+                    researchArea: "HCI New Wearable Devices",
+                    methodology: "Experimental",
+                    studyType: "Empirical",
+                    keywords: ["手势识别", "机器学习", "人机交互"],
+                    citations: 10,
+                    downloads: 150,
+                    abstract: "本文提出了一种基于深度学习的手势识别方法，通过分析手部运动轨迹实现准确的手势分类。实验结果表明该方法在准确率和实时性方面都有显著提升。",
+                    doi: "10.1000/test.2024.001",
+                    websiteUrl: "https://example.com/paper1",
+                    pdfFileSize: 1024000,
+                    isPersistentPDF: false
+                },
+                {
+                    id: 2,
+                    title: "测试论文：可穿戴设备交互设计",
+                    authors: ["王五", "赵六"],
+                    year: 2023,
+                    journal: "交互设计研究",
+                    researchArea: "Mobile Device",
+                    methodology: "Survey",
+                    studyType: "Theoretical",
+                    keywords: ["可穿戴设备", "用户体验", "交互设计"],
+                    citations: 25,
+                    downloads: 200,
+                    abstract: "本研究通过用户调研和实验分析，探讨了可穿戴设备的交互设计原则和最佳实践，为未来的设备设计提供了重要参考。",
+                    doi: "10.1000/test.2023.002",
+                    websiteUrl: "https://example.com/paper2",
+                    pdfFileSize: 2048000,
+                    isPersistentPDF: false
+                }
+            ];
+            
+            addResult('uploadResult', `准备上传 ${testPapers.length} 篇测试论文...`, 'info');
+            
+            // 上传到GitHub
+            await githubSync.syncAllData(testPapers);
+            
+            addResult('uploadResult', '✅ papers.json上传成功！', 'success');
+            addResult('uploadResult', '请检查GitHub仓库: https://github.com/wazgtam1/literature-data/blob/main/papers.json', 'info');
+            
+        } catch (error) {
+            addResult('uploadResult', `❌ 上传失败: ${error.message}`, 'error');
+            console.error('Upload error:', error);
+        }
+    }
+    
+    async function testPDFUpload() {
+        clearResults('pdfResult');
+        
+        try {
+            const githubSync = new GitHubSync();
+            
+            if (!githubSync.isConfigured()) {
+                addResult('pdfResult', '请先配置GitHub', 'error');
+                return;
+            }
+            
+            addResult('pdfResult', '正在创建测试PDF文件...', 'info');
+            
+            // 创建一个简单的PDF内容（模拟）
+            const testPDFContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 12 Tf
+100 700 Td
+(Test PDF Document) Tj
+ET
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000189 00000 n 
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+284
+%%EOF`;
+            
+            // 转换为base64
+            const base64Content = btoa(testPDFContent);
+            
+            addResult('pdfResult', '正在上传测试PDF到GitHub...', 'info');
+            
+            const result = await githubSync.uploadFile(
+                'pdfs/test-paper.pdf',
+                base64Content,
+                'Upload test PDF file',
+                true
+            );
+            
+            addResult('pdfResult', '✅ PDF文件上传成功！', 'success');
+            addResult('pdfResult', `文件URL: ${result.content.html_url}`, 'info');
+            
+        } catch (error) {
+            addResult('pdfResult', `❌ PDF上传失败: ${error.message}`, 'error');
+            console.error('PDF upload error:', error);
+        }
+    }
+    
+    // 页面加载时自动填入保存的配置
+    window.addEventListener('load', () => {
+        const savedToken = localStorage.getItem('github_token');
+        if (savedToken) {
+            document.getElementById('token').value = savedToken;
+        }
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>主应用同步状态检查</title>
+    <script src="config.js"></script>
+    <script src="github-sync.js"></script>
+    <script src="indexeddb-storage.js"></script>
+    <script src="app.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .ok { background: #d4edda; }
+        .warn { background: #fff3cd; }
+        .error { background: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+        input { padding: 8px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 主应用GitHub同步状态检查</h1>
+    
+    <div>
+        <h3>快速配置</h3>
+        <p>Token: <input type="password" id="token" placeholder="输入GitHub Token"></p>
+        <button onclick="quickSetup()">快速配置</button>
+    </div>
+    
+    <div>
+        <h3>状态检查</h3>
+        <button onclick="checkStatus()">检查状态</button>
+        <div id="statusResult"></div>
+    </div>
+    
+    <div>
+        <h3>模拟上传</h3>
+        <button onclick="simulateUpload()">模拟论文上传</button>
+        <div id="uploadResult"></div>
+    </div>
+    
+    <script>
+    let literatureManager = null;
+    
+    function log(elementId, message, type = 'info') {
+        const element = document.getElementById(elementId);
+        const div = document.createElement('div');
+        div.className = `status ${type}`;
+        div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+        element.appendChild(div);
+    }
+    
+    function clear(elementId) {
+        document.getElementById(elementId).innerHTML = '';
+    }
+    
+    async function quickSetup() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+            alert('请输入Token');
+            return;
+        }
+        
+        // 设置配置
+        window.GITHUB_CONFIG.token = token;
+        localStorage.setItem('github_token', token);
+        localStorage.setItem('github_username', 'wazgtam1');
+        
+        // 初始化githubSync
+        if (typeof GitHubSync !== 'undefined') {
+            window.githubSync = new GitHubSync();
+        }
+        
+        alert('配置完成！');
+    }
+    
+    async function checkStatus() {
+        clear('statusResult');
+        
+        // 检查基本配置
+        log('statusResult', `GITHUB_CONFIG.username: ${window.GITHUB_CONFIG.username}`, 'info');
+        log('statusResult', `GITHUB_CONFIG.token: ${window.GITHUB_CONFIG.token ? '已设置' : '未设置'}`, window.GITHUB_CONFIG.token ? 'ok' : 'error');
+        
+        // 检查localStorage
+        const savedToken = localStorage.getItem('github_token');
+        log('statusResult', `localStorage token: ${savedToken ? '已保存' : '未保存'}`, savedToken ? 'ok' : 'warn');
+        
+        // 检查GitHubSync类
+        log('statusResult', `GitHubSync类: ${typeof GitHubSync !== 'undefined' ? '可用' : '不可用'}`, typeof GitHubSync !== 'undefined' ? 'ok' : 'error');
+        
+        // 检查window.githubSync实例
+        log('statusResult', `window.githubSync: ${window.githubSync ? '已创建' : '未创建'}`, window.githubSync ? 'ok' : 'error');
+        
+        if (window.githubSync) {
+            log('statusResult', `githubSync.isConfigured(): ${window.githubSync.isConfigured()}`, window.githubSync.isConfigured() ? 'ok' : 'error');
+        }
+        
+        // 检查LiteratureManager
+        log('statusResult', `LiteratureManager类: ${typeof LiteratureManager !== 'undefined' ? '可用' : '不可用'}`, typeof LiteratureManager !== 'undefined' ? 'ok' : 'error');
+        log('statusResult', `literatureManager实例: ${literatureManager ? '已创建' : '未创建'}`, literatureManager ? 'ok' : 'warn');
+        
+        // 检查配置状态函数
+        try {
+            const status = window.getGitHubStatus();
+            log('statusResult', `getGitHubStatus(): ${status.configured ? '已配置' : '未配置'}`, status.configured ? 'ok' : 'error');
+        } catch (error) {
+            log('statusResult', `getGitHubStatus() 错误: ${error.message}`, 'error');
+        }
+    }
+    
+    async function simulateUpload() {
+        clear('uploadResult');
+        
+        try {
+            if (!window.githubSync) {
+                window.githubSync = new GitHubSync();
+            }
+            
+            if (!window.githubSync.isConfigured()) {
+                log('uploadResult', '❌ GitHub未配置', 'error');
+                return;
+            }
+            
+            log('uploadResult', '✅ GitHub已配置，开始模拟上传...', 'ok');
+            
+            // 创建测试论文数据（模拟主应用的addPaper方法）
+            const testPaper = {
+                id: Date.now(),
+                title: "模拟上传测试论文",
+                authors: ["测试作者"],
+                year: 2024,
+                journal: "测试期刊",
+                researchArea: "HCI New Wearable Devices",
+                methodology: "Experimental",
+                studyType: "Empirical",
+                keywords: ["测试", "上传"],
+                citations: 0,
+                downloads: 0,
+                abstract: "这是一个模拟上传的测试论文，用于验证GitHub同步功能是否正常工作。",
+                doi: "",
+                websiteUrl: "#",
+                pdfFileSize: 0,
+                isPersistentPDF: false
+            };
+            
+            log('uploadResult', '正在同步到GitHub...', 'info');
+            
+            // 模拟主应用的同步逻辑
+            await window.githubSync.syncAllData([testPaper]);
+            
+            log('uploadResult', '✅ 上传成功！请检查GitHub仓库', 'ok');
+            log('uploadResult', 'GitHub仓库: https://github.com/wazgtam1/literature-data', 'info');
+            
+        } catch (error) {
+            log('uploadResult', `❌ 上传失败: ${error.message}`, 'error');
+            console.error('Simulation error:', error);
+        }
+    }
+    
+    // 页面加载时初始化
+    window.addEventListener('load', async () => {
+        // 自动填充保存的token
+        const savedToken = localStorage.getItem('github_token');
+        if (savedToken) {
+            document.getElementById('token').value = savedToken;
+            window.GITHUB_CONFIG.token = savedToken;
+        }
+        
+        // 初始化GitHubSync
+        if (typeof GitHubSync !== 'undefined' && savedToken) {
+            window.githubSync = new GitHubSync();
+        }
+        
+        // 尝试创建LiteratureManager实例（用于测试）
+        try {
+            if (typeof LiteratureManager !== 'undefined') {
+                literatureManager = new LiteratureManager();
+            }
+        } catch (error) {
+            console.log('LiteratureManager initialization failed:', error);
+        }
+        
+        // 1秒后自动检查状态
+        setTimeout(checkStatus, 1000);
+    });
+    </script>
+</body>
+</html>
