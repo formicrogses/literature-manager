@@ -1654,7 +1654,7 @@ class LiteratureManager {
                 fileItem.statusText = '保存中...';
                 this.updateFileItemUI(fileItem);
                 
-                await this.addPaper(paperData);
+                await this.addPaper(paperData, false); // 跳过立即同步，批量完成后统一同步
                 fileItem.status = 'completed';
                 fileItem.progress = 100;
                 fileItem.statusText = '完成';
@@ -1809,7 +1809,7 @@ class LiteratureManager {
         this.showNotification(`${file.name} reset to queue`, 'info');
     }
     
-    finalizeBatchUpload() {
+    async finalizeBatchUpload() {
         this.batchUploadState.processing = false;
         this.batchUploadState.paused = false;
         
@@ -1825,10 +1825,57 @@ class LiteratureManager {
         this.renderPapersGrid();
         this.updatePagination();
         
-        // Show completion notification
-        if (failedCount === 0) {
+        // 批量同步到GitHub（关键修复）
+        if (completedCount > 0 && window.githubSync && window.githubSync.isConfigured()) {
+            try {
+                this.showNotification('正在批量同步到云端...', 'info');
+                this.updateSyncBanner('正在批量同步论文到云端...', 'loading');
+                
+                // 获取所有成功上传的论文
+                const successfulPapers = this.batchUploadState.files
+                    .filter(f => f.status === 'completed' && f.result)
+                    .map(f => f.result);
+                
+                console.log(`开始批量同步 ${successfulPapers.length} 篇论文到GitHub`);
+                
+                // 同步每个论文的PDF文件
+                for (const paper of successfulPapers) {
+                    if (paper.pdfFile) {
+                        try {
+                            const syncedPaper = await window.githubSync.syncPaper(paper, paper.pdfFile);
+                            // 更新论文信息（替换本地URL为GitHub URL）
+                            const paperIndex = this.papers.findIndex(p => p.id === paper.id);
+                            if (paperIndex !== -1) {
+                                this.papers[paperIndex] = { ...this.papers[paperIndex], ...syncedPaper };
+                                console.log(`Paper ${paper.title} updated with GitHub URLs`);
+                            }
+                        } catch (syncError) {
+                            console.error(`Failed to sync paper ${paper.title}:`, syncError);
+                        }
+                    }
+                }
+                
+                // 同步所有论文数据到papers.json
+                await window.githubSync.syncAllData(this.papers);
+                
+                // 重新保存更新后的数据
+                await this.saveData();
+                
+                this.showNotification(`🎉 批量上传完成！${completedCount} 篇论文已同步到云端`, 'success');
+                this.updateSyncBanner(`批量同步成功 - 共 ${this.papers.length} 篇论文`, 'success');
+                
+            } catch (error) {
+                console.error('Batch GitHub sync failed:', error);
+                this.showNotification(`批量上传完成，但云端同步失败：${error.message}`, 'warning');
+                this.updateSyncBanner('批量同步失败，仅保存到本地', 'warning');
+            }
+        } else if (completedCount > 0) {
+            // GitHub未配置或无成功文件
             this.showNotification(`🎉 Batch upload completed! ${completedCount} papers added successfully.`, 'success');
-        } else {
+        }
+        
+        // Show completion notification for failed files
+        if (failedCount > 0) {
             this.showNotification(`Batch upload completed: ${completedCount} successful, ${failedCount} failed. Use "Retry Failed" to try again.`, 'warning');
         }
     }
@@ -2442,7 +2489,7 @@ class LiteratureManager {
         this.showNotification('Paper added successfully!', 'success');
     }
     
-    async addPaper(paperData) {
+    async addPaper(paperData, skipSync = false) {
         console.log('addPaper called with:', paperData);
         
         // Ensure unique ID
@@ -2459,8 +2506,8 @@ class LiteratureManager {
         await this.saveData(); // Save to persistent storage
         console.log('Data saved to storage');
         
-        // 🚀 自动同步到GitHub（关键代码）
-        if (window.githubSync && window.githubSync.isConfigured()) {
+        // 🚀 自动同步到GitHub（关键代码）- 可通过skipSync参数跳过
+        if (!skipSync && window.githubSync && window.githubSync.isConfigured()) {
             try {
                 this.showNotification('正在同步到云端...', 'info');
                 this.updateSyncBanner('正在同步论文到云端...', 'loading');
