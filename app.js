@@ -74,13 +74,13 @@ class LiteratureManager {
         // 1. 首先尝试从GitHub加载共享数据（如果已配置token）
         if (window.githubSync && window.githubSync.isConfigured()) {
             try {
-                console.log('Loading shared data from GitHub...');
+                console.log('Loading shared data from GitHub with authentication...');
                 this.updateSyncBanner('正在从云端加载数据...', 'loading');
                 const sharedPapers = await window.githubSync.loadSharedData();
                 if (sharedPapers && sharedPapers.length > 0) {
                     this.papers = sharedPapers;
                     this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from GitHub');
+                    console.log('Loaded', this.papers.length, 'papers from GitHub with auth');
                     
                     setTimeout(() => {
                         this.showNotification(`已从云端加载 ${this.papers.length} 篇论文`, 'success');
@@ -89,36 +89,36 @@ class LiteratureManager {
                     dataLoaded = true;
                 }
             } catch (error) {
-                console.error('Failed to load from GitHub:', error);
-                this.showNotification('GitHub加载失败，尝试其他方式: ' + error.message, 'warning');
+                console.error('Failed to load from GitHub with auth:', error);
+                this.showNotification('GitHub认证加载失败，尝试公共访问: ' + error.message, 'warning');
             }
         }
         
-        // 2. 如果GitHub加载失败或未配置，尝试从静态数据文件加载（用于公共访问）
+        // 2. 如果GitHub认证加载失败或未配置，尝试从公共数据文件加载（用于访客访问）
         if (!dataLoaded) {
             try {
-                console.log('Loading from static data file...');
-                this.updateSyncBanner('正在加载论文数据...', 'loading');
+                console.log('Loading from public data sources...');
+                this.updateSyncBanner('正在加载公共论文数据...', 'loading');
                 const staticPapers = await this.loadStaticData();
                 if (staticPapers && staticPapers.length > 0) {
                     this.papers = staticPapers;
                     this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from static data');
+                    console.log('Loaded', this.papers.length, 'papers from public data sources');
                     
                     setTimeout(() => {
-                        this.showNotification(`已加载 ${this.papers.length} 篇论文`, 'success');
-                        this.updateSyncBanner(`论文数据已加载 - 共 ${this.papers.length} 篇`, 'success');
+                        this.showNotification(`已加载 ${this.papers.length} 篇论文（公共访问）`, 'success');
+                        this.updateSyncBanner(`公共数据已加载 - 共 ${this.papers.length} 篇论文`, 'success');
                     }, 500);
                     dataLoaded = true;
                 }
             } catch (error) {
-                console.error('Failed to load static data:', error);
-                this.updateSyncBanner('数据加载失败，使用本地存储', 'warning');
+                console.error('Failed to load public data:', error);
+                this.updateSyncBanner('公共数据加载失败，使用本地存储', 'warning');
             }
         }
         
-        // 2. 降级到IndexedDB本地数据
-        if (this.storage) {
+        // 3. 降级到IndexedDB本地数据（仅在前面步骤都失败时）
+        if (!dataLoaded && this.storage) {
             try {
                 const papers = await this.storage.getAllPapers();
                 if (papers && papers.length > 0) {
@@ -127,40 +127,47 @@ class LiteratureManager {
                     console.log('Loaded', this.papers.length, 'papers from IndexedDB');
                     
                     setTimeout(() => {
-                        this.showNotification(`Loaded ${this.papers.length} papers from permanent storage`, 'success');
+                        this.showNotification(`已从本地永久存储加载 ${this.papers.length} 篇论文`, 'success');
+                        this.updateSyncBanner(`本地数据已加载 - 共 ${this.papers.length} 篇论文`, 'info');
                     }, 500);
-                    return;
+                    dataLoaded = true;
                 }
             } catch (error) {
                 console.error('Failed to load from IndexedDB:', error);
             }
         }
         
-        // 3. 降级到localStorage
-        const savedPapers = localStorage.getItem('literaturePapers');
-        if (savedPapers) {
-            try {
-                const parsedPapers = JSON.parse(savedPapers);
-                if (Array.isArray(parsedPapers) && parsedPapers.length > 0) {
-                    this.papers = parsedPapers;
-                    this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from localStorage');
-                    
-                    setTimeout(() => {
-                        this.showNotification(`Loaded ${this.papers.length} papers from temporary storage (考虑迁移到永久存储)`, 'warning');
-                    }, 500);
-                    return;
+        // 4. 最后降级到localStorage（仅在所有前面步骤都失败时）
+        if (!dataLoaded) {
+            const savedPapers = localStorage.getItem('literaturePapers');
+            if (savedPapers) {
+                try {
+                    const parsedPapers = JSON.parse(savedPapers);
+                    if (Array.isArray(parsedPapers) && parsedPapers.length > 0) {
+                        this.papers = parsedPapers;
+                        this.filteredPapers = [...this.papers];
+                        console.log('Loaded', this.papers.length, 'papers from localStorage');
+                        
+                        setTimeout(() => {
+                            this.showNotification(`已从临时存储加载 ${this.papers.length} 篇论文 (建议迁移到永久存储)`, 'warning');
+                            this.updateSyncBanner(`临时数据已加载 - 共 ${this.papers.length} 篇论文`, 'warning');
+                        }, 500);
+                        dataLoaded = true;
+                    }
+                } catch (error) {
+                    console.error('Failed to parse localStorage data:', error);
+                    this.showNotification('Failed to parse local storage data', 'warning');
                 }
-            } catch (error) {
-                console.error('Failed to parse localStorage data:', error);
-                this.showNotification('Failed to parse local storage data', 'warning');
             }
         }
         
-        // No data found
-        this.papers = [];
-        this.filteredPapers = [];
-        console.log('No saved data found, system ready for new uploads');
+        // 如果所有方法都失败了
+        if (!dataLoaded) {
+            this.papers = [];
+            this.filteredPapers = [];
+            console.log('No saved data found, system ready for new uploads');
+            this.updateSyncBanner('未找到数据，系统已准备好接受新的论文上传', 'info');
+        }
     }
     
     // Save data to persistent storage
