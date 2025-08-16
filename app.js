@@ -69,7 +69,7 @@ class LiteratureManager {
     }
     
     async loadData() {
-        // 1. 首先尝试从GitHub加载共享数据
+        // 1. 首先尝试从GitHub加载共享数据（如果已配置token）
         if (window.githubSync && window.githubSync.isConfigured()) {
             try {
                 console.log('Loading shared data from GitHub...');
@@ -88,11 +88,29 @@ class LiteratureManager {
                 }
             } catch (error) {
                 console.error('Failed to load from GitHub:', error);
-                this.showNotification('GitHub加载失败，使用本地数据: ' + error.message, 'warning');
-                this.updateSyncBanner('云端加载失败，使用本地数据', 'warning');
+                this.showNotification('GitHub加载失败，尝试公共数据: ' + error.message, 'warning');
             }
-        } else {
-            this.updateSyncBanner('未配置GitHub同步，仅使用本地存储', 'warning');
+        }
+        
+        // 2. 尝试从公共GitHub仓库加载数据（无需token）
+        try {
+            console.log('Loading public data from GitHub...');
+            this.updateSyncBanner('正在加载公共数据...', 'loading');
+            const publicPapers = await this.loadPublicGitHubData();
+            if (publicPapers && publicPapers.length > 0) {
+                this.papers = publicPapers;
+                this.filteredPapers = [...this.papers];
+                console.log('Loaded', this.papers.length, 'papers from public GitHub');
+                
+                setTimeout(() => {
+                    this.showNotification(`已加载 ${this.papers.length} 篇公共论文`, 'success');
+                    this.updateSyncBanner(`公共数据已加载 - 共 ${this.papers.length} 篇论文`, 'success');
+                }, 500);
+                return;
+            }
+        } catch (error) {
+            console.error('Failed to load public data from GitHub:', error);
+            this.updateSyncBanner('公共数据加载失败，使用本地数据', 'warning');
         }
         
         // 2. 降级到IndexedDB本地数据
@@ -3484,6 +3502,42 @@ class LiteratureManager {
                 panel.classList.add('hidden');
             }
         }, 5000);
+    }
+    
+    // ============ PUBLIC DATA LOADING ============
+    
+    // Load data from public GitHub repository (no token required)
+    async loadPublicGitHubData() {
+        try {
+            const url = `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/main/papers.json`;
+            console.log('Fetching public data from:', url);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (Array.isArray(data)) {
+                console.log(`Successfully loaded ${data.length} papers from public GitHub`);
+                return data;
+            } else {
+                console.error('Invalid data format from public GitHub:', data);
+                return [];
+            }
+            
+        } catch (error) {
+            console.error('Failed to load public GitHub data:', error);
+            throw error;
+        }
     }
 }
 
