@@ -1828,22 +1828,31 @@ class LiteratureManager {
         // 批量同步到GitHub（关键修复）
         if (completedCount > 0 && window.githubSync && window.githubSync.isConfigured()) {
             try {
-                this.showNotification('正在批量同步到云端...', 'info');
-                this.updateSyncBanner('正在批量同步论文到云端...', 'loading');
-                
                 // 获取所有成功上传的论文
                 const successfulPapers = this.batchUploadState.files
                     .filter(f => f.status === 'completed' && f.result)
                     .map(f => f.result);
                 
+                // 显示GitHub同步面板
+                this.showGitHubSyncPanel(successfulPapers.length);
+                
+                this.showNotification('正在批量同步到云端...', 'info');
+                this.updateSyncBanner('正在批量同步论文到云端...', 'loading');
+                
                 console.log(`开始批量同步 ${successfulPapers.length} 篇论文到GitHub`);
                 console.log('成功的论文列表:', successfulPapers.map(p => ({ id: p.id, title: p.title, hasPDF: !!p.pdfFile })));
+                
+                let syncedCount = 0;
                 
                 // 同步每个论文的PDF文件（添加延迟避免冲突）
                 for (let i = 0; i < successfulPapers.length; i++) {
                     const paper = successfulPapers[i];
                     if (paper.pdfFile) {
                         try {
+                            // 更新进度
+                            this.updateSyncProgress(i, successfulPapers.length, `Syncing: ${paper.title}`);
+                            this.addSyncItem(paper.title, 'processing');
+                            
                             // 添加小延迟确保时间戳唯一性
                             if (i > 0) {
                                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -1858,17 +1867,28 @@ class LiteratureManager {
                                 this.papers[paperIndex] = { ...this.papers[paperIndex], ...syncedPaper };
                                 console.log(`Paper ${paper.title} updated with GitHub URLs`);
                             }
+                            
+                            syncedCount++;
+                            this.updateSyncItem(paper.title, 'completed');
+                            
                         } catch (syncError) {
                             console.error(`Failed to sync paper ${paper.title}:`, syncError);
+                            this.updateSyncItem(paper.title, 'failed');
                         }
                     }
                 }
+                
+                // 更新进度为同步数据库
+                this.updateSyncProgress(successfulPapers.length, successfulPapers.length, 'Updating papers database...');
                 
                 // 同步所有论文数据到papers.json
                 await window.githubSync.syncAllData(this.papers);
                 
                 // 重新保存更新后的数据
                 await this.saveData();
+                
+                // 完成同步
+                this.completeSyncProgress(syncedCount, successfulPapers.length);
                 
                 this.showNotification(`🎉 批量上传完成！${completedCount} 篇论文已同步到云端`, 'success');
                 this.updateSyncBanner(`批量同步成功 - 共 ${this.papers.length} 篇论文`, 'success');
@@ -3367,6 +3387,103 @@ class LiteratureManager {
         } catch (error) {
             return null;
         }
+    }
+    
+    // ============ GITHUB SYNC PROGRESS PANEL ============
+    
+    // Show GitHub sync panel
+    showGitHubSyncPanel(totalCount) {
+        const panel = document.getElementById('githubSyncPanel');
+        const counter = document.getElementById('syncCounter');
+        const progressFill = document.getElementById('syncProgressFill');
+        const statusText = document.getElementById('syncStatusText');
+        const details = document.getElementById('syncDetails');
+        
+        if (panel) {
+            panel.classList.remove('hidden');
+            counter.textContent = `0 / ${totalCount}`;
+            progressFill.style.width = '0%';
+            statusText.textContent = 'Preparing to sync...';
+            details.innerHTML = '';
+        }
+    }
+    
+    // Update sync progress
+    updateSyncProgress(current, total, statusMessage) {
+        const counter = document.getElementById('syncCounter');
+        const progressFill = document.getElementById('syncProgressFill');
+        const statusText = document.getElementById('syncStatusText');
+        
+        if (counter) counter.textContent = `${current} / ${total}`;
+        if (progressFill) progressFill.style.width = `${(current / total) * 100}%`;
+        if (statusText) statusText.textContent = statusMessage;
+    }
+    
+    // Add sync item to details
+    addSyncItem(paperTitle, status) {
+        const details = document.getElementById('syncDetails');
+        if (!details) return;
+        
+        const item = document.createElement('div');
+        item.className = 'sync-item';
+        item.dataset.title = paperTitle;
+        
+        const statusIcon = this.getSyncStatusIcon(status);
+        
+        item.innerHTML = `
+            <div class="sync-item-status ${status}">${statusIcon}</div>
+            <div class="sync-item-text">${paperTitle}</div>
+        `;
+        
+        details.appendChild(item);
+    }
+    
+    // Update existing sync item
+    updateSyncItem(paperTitle, newStatus) {
+        const details = document.getElementById('syncDetails');
+        if (!details) return;
+        
+        const item = details.querySelector(`[data-title="${paperTitle}"]`);
+        if (item) {
+            const statusElement = item.querySelector('.sync-item-status');
+            const statusIcon = this.getSyncStatusIcon(newStatus);
+            
+            statusElement.className = `sync-item-status ${newStatus}`;
+            statusElement.textContent = statusIcon;
+        }
+    }
+    
+    // Get status icon
+    getSyncStatusIcon(status) {
+        const icons = {
+            pending: '⏳',
+            processing: '🔄',
+            completed: '✅',
+            failed: '❌'
+        };
+        return icons[status] || '❓';
+    }
+    
+    // Complete sync progress
+    completeSyncProgress(syncedCount, totalCount) {
+        const statusText = document.getElementById('syncStatusText');
+        const progressFill = document.getElementById('syncProgressFill');
+        
+        if (statusText) {
+            statusText.textContent = `Sync completed! ${syncedCount}/${totalCount} files uploaded`;
+        }
+        
+        if (progressFill) {
+            progressFill.style.width = '100%';
+        }
+        
+        // Auto-hide panel after 5 seconds
+        setTimeout(() => {
+            const panel = document.getElementById('githubSyncPanel');
+            if (panel) {
+                panel.classList.add('hidden');
+            }
+        }, 5000);
     }
 }
 
