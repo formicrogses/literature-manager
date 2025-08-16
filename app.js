@@ -2587,6 +2587,9 @@ class LiteratureManager {
                 // 同步所有论文数据
                 await window.githubSync.syncAllData(this.papers);
                 
+                // 同步公共数据快照到主仓库（用于访客访问）
+                await this.syncPublicDataSnapshot();
+                
                 this.showNotification('论文已自动同步到云端！其他人现在可以看到了', 'success');
                 this.updateSyncBanner(`云端同步成功 - 共 ${this.papers.length} 篇论文`, 'success');
                 
@@ -3242,6 +3245,10 @@ class LiteratureManager {
                 try {
                     await window.githubSync.syncAllData(this.papers);
                     await this.deletePaperFromGitHub(paper);
+                    
+                    // 同步公共数据快照到主仓库（用于访客访问）
+                    await this.syncPublicDataSnapshot();
+                    
                     this.showNotification('Paper deleted and synced to cloud!', 'success');
                 } catch (syncError) {
                     console.error('GitHub sync failed:', syncError);
@@ -3294,6 +3301,9 @@ class LiteratureManager {
                     for (const paper of papersToDelete) {
                         await this.deletePaperFromGitHub(paper);
                     }
+                    
+                    // 同步公共数据快照到主仓库（用于访客访问）
+                    await this.syncPublicDataSnapshot();
                     
                     this.showNotification(`${selectedIds.length} papers deleted and synced to cloud!`, 'success');
                 } catch (syncError) {
@@ -3352,6 +3362,9 @@ class LiteratureManager {
                     for (const paper of papersToDelete) {
                         await this.deletePaperFromGitHub(paper);
                     }
+                    
+                    // 同步公共数据快照到主仓库（用于访客访问）
+                    await this.syncPublicDataSnapshot();
                     
                     this.showNotification(`All ${paperCount} papers cleared and synced to cloud!`, 'success');
                 } catch (syncError) {
