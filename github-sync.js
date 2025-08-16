@@ -43,13 +43,23 @@ class GitHubSync {
         }
     }
 
-    // 上传文件到GitHub
-    async uploadFile(path, content, message, isBase64 = false, forceSHA = null) {
+    // 上传文件到GitHub（增强版SHA冲突处理）
+    async uploadFile(path, content, message, isBase64 = false, forceSHA = null, retryCount = 0) {
         if (!this.isConfigured()) {
             throw new Error('GitHub未配置，请先配置GitHub信息');
         }
 
+        const maxRetries = 3;
+        const baseDelay = 1000; // 1秒基础延迟
+
         try {
+            // 如果这是重试，添加延迟以避免竞争条件
+            if (retryCount > 0) {
+                const delay = baseDelay * Math.pow(2, retryCount - 1); // 指数退避
+                console.log(`Retry ${retryCount}/${maxRetries} for ${path}, waiting ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+
             // 如果提供了forceSHA，使用它；否则重新获取最新的SHA
             const sha = forceSHA || await this.getFileSHA(path);
             
@@ -75,19 +85,27 @@ class GitHubSync {
             if (!response.ok) {
                 const error = await response.json();
                 
-                // 如果是SHA不匹配错误，重新获取SHA并重试一次
-                if (error.message && error.message.includes('does not match') && !forceSHA) {
-                    console.log('SHA不匹配，重新获取最新SHA并重试...');
-                    const latestSHA = await this.getFileSHA(path);
-                    return await this.uploadFile(path, content, message, isBase64, latestSHA);
+                // 如果是SHA不匹配错误，重新获取SHA并重试
+                if (error.message && error.message.includes('does not match') && retryCount < maxRetries) {
+                    console.log(`SHA不匹配错误，准备重试 ${retryCount + 1}/${maxRetries}: ${path}`);
+                    return await this.uploadFile(path, content, message, isBase64, null, retryCount + 1);
                 }
                 
                 throw new Error(`GitHub API错误: ${error.message}`);
             }
 
+            if (retryCount > 0) {
+                console.log(`✅ 重试成功: ${path} (重试 ${retryCount} 次)`);
+            }
+
             return await response.json();
         } catch (error) {
-            console.error('上传文件失败:', path, error);
+            if (retryCount < maxRetries && (error.message.includes('does not match') || error.message.includes('conflict'))) {
+                console.log(`上传失败，准备重试 ${retryCount + 1}/${maxRetries}: ${path}`, error.message);
+                return await this.uploadFile(path, content, message, isBase64, null, retryCount + 1);
+            }
+            
+            console.error('上传文件最终失败:', path, error);
             throw error;
         }
     }
@@ -349,9 +367,9 @@ class GitHubSync {
                 description: "Public research papers database - automatically updated"
             };
 
-            // Upload to a public-accessible file in the root
+            // Upload to a separate public file to avoid conflicts with main papers.json
             const result = await this.uploadFile(
-                'papers.json', // Root level for easy access
+                'public-papers.json', // Use different filename to avoid SHA conflicts
                 JSON.stringify(publicData, null, 2),
                 `Update public papers snapshot: ${publicPapers.length} papers`
             );

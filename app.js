@@ -3628,6 +3628,8 @@ class LiteratureManager {
             const sources = [
                 // Try the same-origin data folder first (if exists)
                 './data/papers.json',
+                // Try the dedicated public snapshot file (避免SHA冲突)
+                `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/main/public-papers.json`,
                 // Try the public snapshot in GitHub repository root
                 `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/main/papers.json`,
                 // Fallback to direct GitHub raw access with existing path
