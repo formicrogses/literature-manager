@@ -959,6 +959,11 @@ class LiteratureManager {
                                     </span>` :
                                     `<span class="size-info">${this.formatFileSize(paper.pdfFileSize)}</span>`
                                 }
+                                ${paper.parseWarning ? 
+                                    `<div class="parse-warning">
+                                        <small>⚠️ PDF解析遇到问题，部分信息可能不完整</small>
+                                    </div>` : ''
+                                }
                             </div>
                         </div>
                     ` : ''}
@@ -1863,106 +1868,195 @@ class LiteratureManager {
     
     async parsePDF(file, selectedCategory = 'auto') {
         try {
+            // 首先验证PDF文件
+            const isValidPDF = await this.validatePDFFile(file);
+            if (!isValidPDF) {
+                console.warn('Invalid PDF file detected, using fallback parsing');
+                return this.createFallbackPaperData(file, selectedCategory);
+            }
+
             // Check if PDF compression is needed (files > 2MB)
             let processedFile = file;
             const sizeLimit = 2 * 1024 * 1024; // 2MB
             
             if (file.size > sizeLimit) {
                 console.log(`PDF文件较大 (${this.formatFileSize(file.size)})，正在自动压缩...`);
-                processedFile = await this.compressPDF(file);
-                console.log(`压缩完成：${this.formatFileSize(file.size)} → ${this.formatFileSize(processedFile.size)}`);
+                try {
+                    processedFile = await this.compressPDF(file);
+                    console.log(`压缩完成：${this.formatFileSize(file.size)} → ${this.formatFileSize(processedFile.size)}`);
+                } catch (compressionError) {
+                    console.warn('PDF compression failed, using original file:', compressionError);
+                    processedFile = file;
+                }
             }
             
             // Convert PDF file to base64 for persistent storage
             const pdfBase64 = await this.convertFileToBase64(processedFile);
             
-            // Initialize PDF.js
+            // Initialize PDF.js with error handling
             if (typeof pdfjsLib !== 'undefined') {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                
-                const arrayBuffer = await processedFile.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                
-                // Generate thumbnail from first page
-                const thumbnail = await this.generatePDFThumbnail(pdf);
-                
-                let fullText = '';
-                const maxPages = Math.min(pdf.numPages, 3); // Only parse first 3 pages
-                
-                for (let i = 1; i <= maxPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n';
+                try {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    
+                    const arrayBuffer = await processedFile.arrayBuffer();
+                    
+                    // Add PDF.js specific options for better compatibility
+                    const loadingTask = pdfjsLib.getDocument({
+                        data: arrayBuffer,
+                        verbosity: 0, // Reduce console spam
+                        isEvalSupported: false,
+                        useSystemFonts: true,
+                        cMapPacked: true,
+                        cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                        standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/',
+                        // Add error recovery options
+                        stopAtErrors: false,
+                        maxImageSize: 1024 * 1024, // 1MB max image size
+                        disableFontFace: false,
+                        disableRange: false,
+                        disableStream: false
+                    });
+                    
+                    const pdf = await loadingTask.promise;
+                    
+                    // Generate thumbnail from first page with error handling
+                    let thumbnail = null;
+                    try {
+                        thumbnail = await this.generatePDFThumbnail(pdf);
+                    } catch (thumbnailError) {
+                        console.warn('Thumbnail generation failed:', thumbnailError);
+                    }
+                    
+                    // Extract text with error handling
+                    let fullText = '';
+                    const maxPages = Math.min(pdf.numPages, 3); // Only parse first 3 pages
+                    
+                    for (let i = 1; i <= maxPages; i++) {
+                        try {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + '\n';
+                        } catch (pageError) {
+                            console.warn(`Failed to extract text from page ${i}:`, pageError);
+                            continue;
+                        }
+                    }
+                    
+                    // Extract paper information using NLP patterns
+                    const extractedInfo = this.extractPaperInfo(fullText);
+                    const fileName = file.name.replace('.pdf', '');
+                    
+                    // Determine research area based on selection
+                    let researchArea;
+                    if (selectedCategory === 'auto') {
+                        researchArea = this.classifyResearchArea(extractedInfo.title + ' ' + fullText.substring(0, 500));
+                    } else {
+                        researchArea = selectedCategory;
+                    }
+                    
+                    return {
+                        title: extractedInfo.title || fileName,
+                        authors: extractedInfo.authors || ['Unknown Author'],
+                        year: extractedInfo.year || new Date().getFullYear(),
+                        journal: extractedInfo.journal || 'Unknown Journal',
+                        researchArea: researchArea,
+                        methodology: 'Experimental',
+                        studyType: 'Empirical',
+                        keywords: extractedInfo.keywords || [],
+                        citations: 0,
+                        hIndex: 0,
+                        downloads: 0,
+                        abstract: extractedInfo.abstract || fullText.substring(0, 300) + '...',
+                        doi: extractedInfo.doi || '',
+                        pdfUrl: pdfBase64, // Store compressed base64
+                        websiteUrl: '#',
+                        thumbnail: thumbnail,
+                        originalThumbnail: thumbnail,
+                        pdfFileSize: processedFile.size, // Store compressed file size
+                        originalFileSize: file.size, // Store original file size for reference
+                        isCompressed: file.size !== processedFile.size,
+                        isPersistentPDF: true // Flag to indicate this PDF will persist
+                    };
+                } catch (pdfError) {
+                    console.warn('PDF.js parsing failed:', pdfError);
+                    // Fall back to basic parsing
+                    return this.createFallbackPaperData(file, selectedCategory, pdfBase64, processedFile);
                 }
-                
-                // Extract paper information using NLP patterns
-                const extractedInfo = this.extractPaperInfo(fullText);
-                const fileName = file.name.replace('.pdf', '');
-                
-                // Determine research area based on selection
-                let researchArea;
-                if (selectedCategory === 'auto') {
-                    researchArea = this.classifyResearchArea(extractedInfo.title + ' ' + fullText.substring(0, 500));
-                } else {
-                    researchArea = selectedCategory;
-                }
-                
-                return {
-                    title: extractedInfo.title || fileName,
-                    authors: extractedInfo.authors || ['Unknown Author'],
-                    year: extractedInfo.year || new Date().getFullYear(),
-                    journal: extractedInfo.journal || 'Unknown Journal',
-                    researchArea: researchArea,
-                    methodology: 'Experimental',
-                    studyType: 'Empirical',
-                    keywords: extractedInfo.keywords || [],
-                    citations: 0,
-                    hIndex: 0,
-                    downloads: 0,
-                    abstract: extractedInfo.abstract || fullText.substring(0, 300) + '...',
-                    doi: extractedInfo.doi || '',
-                    pdfUrl: pdfBase64, // Store compressed base64
-                    websiteUrl: '#',
-                    thumbnail: thumbnail,
-                    originalThumbnail: thumbnail,
-                    pdfFileSize: processedFile.size, // Store compressed file size
-                    originalFileSize: file.size, // Store original file size for reference
-                    isCompressed: file.size !== processedFile.size,
-                    isPersistentPDF: true // Flag to indicate this PDF will persist
-                };
             } else {
-                // Fallback to basic parsing
-                const fileName = file.name.replace('.pdf', '');
-                const researchArea = selectedCategory === 'auto' ? 'General' : selectedCategory;
-                
-                return {
-                    title: fileName,
-                    authors: ['Unknown Author'],
-                    year: new Date().getFullYear(),
-                    journal: 'Unknown Journal',
-                    researchArea: researchArea,
-                    methodology: 'Experimental',
-                    studyType: 'Empirical',
-                    keywords: [],
-                    citations: 0,
-                    hIndex: 0,
-                    downloads: 0,
-                    abstract: `Paper parsed from PDF file "${file.name}", please manually edit relevant information.`,
-                    doi: '',
-                    pdfUrl: pdfBase64, // Use compressed base64 for fallback too
-                    websiteUrl: '#',
-                    thumbnail: null,
-                    pdfFileSize: processedFile.size,
-                    originalFileSize: file.size,
-                    isCompressed: file.size !== processedFile.size,
-                    isPersistentPDF: true
-                };
+                // Fallback to basic parsing when PDF.js is not available
+                return this.createFallbackPaperData(file, selectedCategory, pdfBase64, processedFile);
             }
         } catch (error) {
             console.error('PDF parsing error:', error);
-            throw new Error('PDF parsing failed: ' + error.message);
+            // Create fallback paper data even on error
+            try {
+                return this.createFallbackPaperData(file, selectedCategory);
+            } catch (fallbackError) {
+                throw new Error('PDF解析完全失败: ' + error.message);
+            }
         }
+    }
+    
+    // Validate PDF file structure
+    async validatePDFFile(file) {
+        try {
+            // Check file size (must be > 0 and < 100MB)
+            if (file.size === 0 || file.size > 100 * 1024 * 1024) {
+                return false;
+            }
+            
+            // Read first few bytes to check PDF header
+            const headerSize = Math.min(1024, file.size);
+            const headerBlob = file.slice(0, headerSize);
+            const headerBuffer = await headerBlob.arrayBuffer();
+            const headerBytes = new Uint8Array(headerBuffer);
+            
+            // Convert to string to check PDF signature
+            const headerString = String.fromCharCode.apply(null, headerBytes.slice(0, 10));
+            
+            // PDF files should start with %PDF-
+            if (!headerString.startsWith('%PDF-')) {
+                console.warn('File does not have valid PDF header');
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.warn('PDF validation failed:', error);
+            return false;
+        }
+    }
+    
+    // Create fallback paper data for problematic PDFs
+    createFallbackPaperData(file, selectedCategory, pdfBase64 = null, processedFile = null) {
+        const fileName = file.name.replace('.pdf', '');
+        const researchArea = selectedCategory === 'auto' ? 'General' : selectedCategory;
+        const actualFile = processedFile || file;
+        
+        return {
+            title: fileName,
+            authors: ['Unknown Author'],
+            year: new Date().getFullYear(),
+            journal: 'Unknown Journal',
+            researchArea: researchArea,
+            methodology: 'Experimental',
+            studyType: 'Empirical',
+            keywords: [],
+            citations: 0,
+            hIndex: 0,
+            downloads: 0,
+            abstract: `PDF文件"${file.name}"已上传，但无法解析内容。请手动编辑相关信息。可能原因：文件损坏、密码保护或不支持的PDF格式。`,
+            doi: '',
+            pdfUrl: pdfBase64 || '#',
+            websiteUrl: '#',
+            thumbnail: null,
+            pdfFileSize: actualFile.size,
+            originalFileSize: file.size,
+            isCompressed: processedFile ? (file.size !== processedFile.size) : false,
+            isPersistentPDF: !!pdfBase64,
+            parseWarning: true // Flag to indicate parsing had issues
+        };
     }
     
     // Convert file to base64 for persistent storage
