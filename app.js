@@ -69,6 +69,8 @@ class LiteratureManager {
     }
     
     async loadData() {
+        let dataLoaded = false;
+        
         // 1. 首先尝试从GitHub加载共享数据（如果已配置token）
         if (window.githubSync && window.githubSync.isConfigured()) {
             try {
@@ -84,12 +86,34 @@ class LiteratureManager {
                         this.showNotification(`已从云端加载 ${this.papers.length} 篇论文`, 'success');
                         this.updateSyncBanner(`云端同步已启用 - 已加载 ${this.papers.length} 篇论文`, 'success');
                     }, 500);
-                    return;
+                    dataLoaded = true;
                 }
             } catch (error) {
                 console.error('Failed to load from GitHub:', error);
-                this.showNotification('GitHub加载失败，使用本地数据: ' + error.message, 'warning');
-                this.updateSyncBanner('GitHub加载失败，使用本地数据', 'warning');
+                this.showNotification('GitHub加载失败，尝试其他方式: ' + error.message, 'warning');
+            }
+        }
+        
+        // 2. 如果GitHub加载失败或未配置，尝试从静态数据文件加载（用于公共访问）
+        if (!dataLoaded) {
+            try {
+                console.log('Loading from static data file...');
+                this.updateSyncBanner('正在加载论文数据...', 'loading');
+                const staticPapers = await this.loadStaticData();
+                if (staticPapers && staticPapers.length > 0) {
+                    this.papers = staticPapers;
+                    this.filteredPapers = [...this.papers];
+                    console.log('Loaded', this.papers.length, 'papers from static data');
+                    
+                    setTimeout(() => {
+                        this.showNotification(`已加载 ${this.papers.length} 篇论文`, 'success');
+                        this.updateSyncBanner(`论文数据已加载 - 共 ${this.papers.length} 篇`, 'success');
+                    }, 500);
+                    dataLoaded = true;
+                }
+            } catch (error) {
+                console.error('Failed to load static data:', error);
+                this.updateSyncBanner('数据加载失败，使用本地存储', 'warning');
             }
         }
         
@@ -1882,6 +1906,9 @@ class LiteratureManager {
                 // 同步所有论文数据到papers.json
                 await window.githubSync.syncAllData(this.papers);
                 
+                // 同步公共数据快照到主仓库（用于访客访问）
+                await this.syncPublicDataSnapshot();
+                
                 // 重新保存更新后的数据
                 await this.saveData();
                 
@@ -3526,6 +3553,118 @@ class LiteratureManager {
         } catch (error) {
             console.error('Failed to load public GitHub data:', error);
             throw error;
+        }
+    }
+    
+    // ============ PUBLIC DATA SYNC ============
+    
+    // Sync public data snapshot for visitor access
+    async syncPublicDataSnapshot() {
+        if (!window.githubSync || !window.githubSync.isConfigured()) {
+            console.log('GitHub not configured, skipping public data sync');
+            return;
+        }
+        
+        try {
+            console.log('Syncing public data snapshot...');
+            
+            // Create a clean version of papers data for public access
+            const publicPapers = this.papers.map(paper => {
+                // Remove sensitive fields and convert base64 PDFs to GitHub URLs
+                const publicPaper = { ...paper };
+                
+                // Remove internal metadata
+                delete publicPaper.pdfFile;
+                delete publicPaper.parseWarning;
+                delete publicPaper.originalFileSize;
+                delete publicPaper.isCompressed;
+                
+                // Ensure PDF URLs point to GitHub for public access
+                if (publicPaper.pdfUrl && publicPaper.pdfUrl.startsWith('data:')) {
+                    // If still base64, it means GitHub sync failed - keep as unavailable
+                    publicPaper.pdfUrl = '#';
+                }
+                
+                return publicPaper;
+            });
+            
+            // Sync the public snapshot to the main repository
+            await window.githubSync.syncPublicSnapshot(publicPapers);
+            
+            console.log(`Public data snapshot synced with ${publicPapers.length} papers`);
+            
+        } catch (error) {
+            console.error('Failed to sync public data snapshot:', error);
+            // Don't throw - this is a non-critical enhancement
+        }
+    }
+    
+    // ============ STATIC DATA LOADING ============
+    
+    // Load data from static JSON file (for public access)
+    async loadStaticData() {
+        try {
+            // Try multiple sources for public data access
+            const sources = [
+                // Try the same-origin data folder first (if exists)
+                './data/papers.json',
+                // Try the public snapshot in GitHub repository root
+                `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/main/papers.json`,
+                // Fallback to direct GitHub raw access with existing path
+                `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.username}/${window.GITHUB_CONFIG.dataRepo}/main/${window.GITHUB_CONFIG.paths.papers}`
+            ];
+            
+            for (const url of sources) {
+                try {
+                    console.log(`Trying to load data from: ${url}`);
+                    
+                    const isGitHub = url.includes('raw.githubusercontent.com');
+                    const fetchOptions = {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        }
+                    };
+                    
+                    // For GitHub raw URLs, use cors mode with minimal headers
+                    if (isGitHub) {
+                        fetchOptions.mode = 'cors';
+                        fetchOptions.headers = {
+                            'Accept': 'application/json'
+                        };
+                    }
+                    
+                    const response = await fetch(url, fetchOptions);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Handle both formats: direct array or object with papers array
+                        let papers = [];
+                        if (Array.isArray(data)) {
+                            papers = data;
+                        } else if (data.papers && Array.isArray(data.papers)) {
+                            papers = data.papers;
+                        }
+                        
+                        if (papers.length > 0) {
+                            console.log(`Successfully loaded ${papers.length} papers from: ${url}`);
+                            return papers;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`Failed to load from ${url}:`, error.message);
+                    continue;
+                }
+            }
+            
+            console.log('No static data sources available');
+            return [];
+            
+        } catch (error) {
+            console.log('Static data loading failed:', error.message);
+            return [];
         }
     }
 }

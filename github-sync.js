@@ -330,6 +330,40 @@ class GitHubSync {
             throw error;
         }
     }
+    
+    // 同步公共数据快照到主仓库（用于访客访问）
+    async syncPublicSnapshot(publicPapers) {
+        if (!this.isConfigured()) {
+            throw new Error('GitHub未配置，请先配置GitHub信息');
+        }
+
+        try {
+            console.log('Syncing public data snapshot...');
+            
+            // Create a public-accessible JSON file with clean data
+            const publicData = {
+                papers: publicPapers,
+                lastUpdate: new Date().toISOString(),
+                totalCount: publicPapers.length,
+                version: "1.0",
+                description: "Public research papers database - automatically updated"
+            };
+
+            // Upload to a public-accessible file in the root
+            const result = await this.uploadFile(
+                'papers.json', // Root level for easy access
+                JSON.stringify(publicData, null, 2),
+                `Update public papers snapshot: ${publicPapers.length} papers`
+            );
+            
+            console.log('Public data snapshot synced successfully');
+            return result;
+            
+        } catch (error) {
+            console.error('Failed to sync public data snapshot:', error);
+            throw error;
+        }
+    }
 }
 
 // 全局实例
