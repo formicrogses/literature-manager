@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub仓库清理工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .code {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #c82333;
+        }
+        .safe-btn {
+            background-color: #28a745;
+        }
+        .safe-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 GitHub仓库清理工具</h1>
+        
+        <div class="warning">
+            <strong>⚠️ 重要提醒：</strong><br>
+            这个操作将删除GitHub仓库中的所有PDF文件和数据文件，此操作不可撤销！<br>
+            请确保你真的要清理所有数据后再进行操作。
+        </div>
+
+        <h2>方法一：使用系统清理功能（推荐）</h2>
+        
+        <div class="step">
+            <h3>步骤 1：打开文献管理系统</h3>
+            <p>访问你的文献管理系统页面：</p>
+            <div class="code">https://wazgtam1.github.io/literature-manager/</div>
+        </div>
+
+        <div class="step">
+            <h3>步骤 2：配置GitHub</h3>
+            <p>点击页面上的"⚙️ GitHub配置"按钮，确保已经正确配置了你的GitHub信息。</p>
+        </div>
+
+        <div class="step">
+            <h3>步骤 3：清空所有论文</h3>
+            <p>在页面右上角找到"🗑️ Clear All"按钮，点击它。</p>
+            <p>系统会要求你确认删除，点击确认即可。</p>
+            <p>系统将自动：</p>
+            <ul>
+                <li>删除所有本地论文数据</li>
+                <li>删除GitHub仓库中的所有PDF文件</li>
+                <li>清空所有数据文件</li>
+                <li>重置为空白状态</li>
+            </ul>
+        </div>
+
+        <div class="success">
+            <strong>✅ 清理完成后：</strong><br>
+            页面会显示"0篇论文"，此时你就可以重新上传论文了。
+        </div>
+
+        <h2>方法二：手动API清理（高级用户）</h2>
+        
+        <div class="step">
+            <h3>如果方法一不可用，可以使用以下代码：</h3>
+            <p>在浏览器控制台中运行以下代码：</p>
+            <div class="code">
+// 替换为你的GitHub Token<br>
+const token = "你的GitHub_TOKEN_在这里";<br>
+<br>
+// 加载清理脚本<br>
+const script = document.createElement('script');<br>
+script.src = './cleanup-github-repo.js';<br>
+document.head.appendChild(script);<br>
+<br>
+// 等待脚本加载后运行<br>
+script.onload = () => {<br>
+&nbsp;&nbsp;const cleaner = new GitHubCleaner(token, "wazgtam1", "literature-data");<br>
+&nbsp;&nbsp;cleaner.cleanupRepository();<br>
+};
+            </div>
+        </div>
+
+        <div class="warning">
+            <strong>获取GitHub Token的方法：</strong><br>
+            1. 访问 <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings > Tokens</a><br>
+            2. 点击"Generate new token"<br>
+            3. 选择"repo"权限<br>
+            4. 复制生成的token
+        </div>
+
+        <h2>推荐流程</h2>
+        <ol>
+            <li>使用方法一（系统自带的Clear All功能）</li>
+            <li>确认页面显示"0篇论文"</li>
+            <li>开始重新上传你的论文</li>
+        </ol>
+
+        <div class="success">
+            <strong>🎉 清理完成后，你就可以：</strong><br>
+            • 重新批量上传PDF文件<br>
+            • 享受完整的GitHub同步功能<br>
+            • 分享链接给其他人查看最新内容
+        </div>
+    </div>
+</body>
+</html>
