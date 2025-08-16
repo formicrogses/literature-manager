@@ -50,6 +50,18 @@ class LiteratureManager {
             this.storage = null;
         }
         
+        // Initialize GitHub sync if available
+        try {
+            if (typeof GitHubSync !== 'undefined') {
+                window.githubSync = new GitHubSync();
+                console.log('GitHub sync initialized');
+            } else {
+                console.warn('GitHubSync class not available');
+            }
+        } catch (error) {
+            console.warn('GitHub sync initialization failed:', error);
+        }
+        
         await this.loadData();
         this.setupEventListeners();
         this.initializeFilters();

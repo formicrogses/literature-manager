@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GitHub同步测试</title>
+    <script src="config.js"></script>
+    <script src="github-sync.js"></script>
+</head>
+<body>
+    <h1>GitHub同步状态测试</h1>
+    <div id="result"></div>
+    
+    <script>
+    // 测试GitHub配置
+    async function testGitHubConfig() {
+        const result = document.getElementById('result');
+        
+        // 检查配置
+        const status = window.getGitHubStatus();
+        result.innerHTML += `<p>配置状态: ${status.configured ? '已配置' : '未配置'}</p>`;
+        result.innerHTML += `<p>用户名: ${status.username}</p>`;
+        result.innerHTML += `<p>仓库: ${status.repo}</p>`;
+        result.innerHTML += `<p>Token长度: ${window.GITHUB_CONFIG.token.length}</p>`;
+        
+        if (!status.configured) {
+            result.innerHTML += `<p style="color: red;">请配置GitHub Token</p>`;
+            return;
+        }
+        
+        // 测试GitHub连接
+        try {
+            const githubSync = new GitHubSync();
+            result.innerHTML += `<p>正在测试连接...</p>`;
+            
+            const testData = {
+                papers: [
+                    {
+                        id: Date.now(),
+                        title: "测试论文",
+                        authors: ["测试作者"],
+                        year: 2024,
+                        abstract: "这是一个测试"
+                    }
+                ],
+                lastUpdate: new Date().toISOString(),
+                totalCount: 1,
+                version: "1.0"
+            };
+            
+            await githubSync.uploadFile(
+                'papers.json',
+                JSON.stringify(testData, null, 2),
+                '测试GitHub同步连接'
+            );
+            
+            result.innerHTML += `<p style="color: green;">✅ GitHub同步测试成功！</p>`;
+            
+        } catch (error) {
+            result.innerHTML += `<p style="color: red;">❌ GitHub同步失败: ${error.message}</p>`;
+        }
+    }
+    
+    // 页面加载后自动测试
+    window.addEventListener('load', testGitHubConfig);
+    </script>
+</body>
+</html>
