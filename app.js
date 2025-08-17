@@ -14,7 +14,7 @@ class LiteratureManager {
         this.filters = {
             search: '',
             category: 'all',
-            yearMin: 2000,
+            yearMin: 1970,
             yearMax: 2024,
             methodologies: [],
             studyTypes: [],
@@ -808,7 +808,7 @@ class LiteratureManager {
         this.filters = {
             search: '',
             category: 'all',
-            yearMin: 2000,
+            yearMin: 1970,
             yearMax: 2024,
             methodologies: [],
             studyTypes: [],
@@ -819,7 +819,7 @@ class LiteratureManager {
         
         // Reset UI elements
         document.getElementById('searchInput').value = '';
-        document.getElementById('yearMin').value = 2000;
+        document.getElementById('yearMin').value = 1970;
         document.getElementById('yearMax').value = 2024;
         document.getElementById('citationMin').value = '';
         document.getElementById('citationMax').value = '';
