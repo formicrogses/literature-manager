@@ -71,73 +71,50 @@ class LiteratureManager {
     async loadData() {
         let dataLoaded = false;
         
-        // 1. First try to load shared data from GitHub (if token is configured)
+        // 1. Priority 1: Load from GitHub data repository (main source of truth)
         if (window.githubSync && window.githubSync.isConfigured()) {
             try {
-                console.log('Loading shared data from GitHub with authentication...');
-                this.updateSyncBanner('Loading data from cloud...', 'loading');
+                console.log('Loading data from GitHub data repository...');
+                this.updateSyncBanner('Loading data from GitHub data repository...', 'loading');
                 const sharedPapers = await window.githubSync.loadSharedData();
                 if (sharedPapers && sharedPapers.length > 0) {
                     this.papers = sharedPapers;
                     this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from GitHub with auth');
+                    console.log('Loaded', this.papers.length, 'papers from GitHub data repository');
                     
                     setTimeout(() => {
-                        this.showNotification(`Loaded ${this.papers.length} papers from cloud`, 'success');
-                        this.updateSyncBanner(`Cloud sync enabled - loaded ${this.papers.length} papers`, 'success');
+                        this.showNotification(`Loaded ${this.papers.length} papers from GitHub data repository`, 'success');
+                        this.updateSyncBanner(`Data loaded from GitHub repository - ${this.papers.length} papers total`, 'success');
                     }, 500);
                     dataLoaded = true;
                 }
             } catch (error) {
-                console.error('Failed to load from GitHub with auth:', error);
-                this.showNotification('GitHub authentication failed, trying public access: ' + error.message, 'warning');
+                console.error('Failed to load from GitHub data repository:', error);
+                this.showNotification('GitHub data repository access failed, trying fallback sources: ' + error.message, 'warning');
             }
         }
         
-        // 2. If GitHub authentication failed or not configured, try loading from public data files (for visitor access)
-        if (!dataLoaded) {
-            try {
-                console.log('Loading from public data sources...');
-                this.updateSyncBanner('Loading public paper data...', 'loading');
-                const staticPapers = await this.loadStaticData();
-                if (staticPapers && staticPapers.length > 0) {
-                    this.papers = staticPapers;
-                    this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from public data sources');
-                    
-                    setTimeout(() => {
-                        this.showNotification(`Loaded ${this.papers.length} papers (public access)`, 'success');
-                        this.updateSyncBanner(`Public data loaded - ${this.papers.length} papers total`, 'success');
-                    }, 500);
-                    dataLoaded = true;
-                }
-            } catch (error) {
-                console.error('Failed to load public data:', error);
-                this.updateSyncBanner('Public data loading failed, using local storage', 'warning');
-            }
-        }
-        
-        // 3. Fall back to IndexedDB local data (only when previous steps fail)
+        // 2. Fallback 1: Load from local IndexedDB cache (if GitHub fails)
         if (!dataLoaded && this.storage) {
             try {
                 const papers = await this.storage.getAllPapers();
                 if (papers && papers.length > 0) {
                     this.papers = papers;
                     this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from IndexedDB');
+                    console.log('Loaded', this.papers.length, 'papers from IndexedDB cache');
                     
                     setTimeout(() => {
-                        this.showNotification(`Loaded ${this.papers.length} papers from local persistent storage`, 'success');
-                        this.updateSyncBanner(`Local data loaded - ${this.papers.length} papers total`, 'info');
+                        this.showNotification(`Loaded ${this.papers.length} papers from local cache (offline mode)`, 'warning');
+                        this.updateSyncBanner(`Local cache loaded - ${this.papers.length} papers total (offline mode)`, 'warning');
                     }, 500);
                     dataLoaded = true;
                 }
             } catch (error) {
-                console.error('Failed to load from IndexedDB:', error);
+                console.error('Failed to load from IndexedDB cache:', error);
             }
         }
         
-        // 4. Finally fall back to localStorage (only when all previous steps fail)
+        // 3. Fallback 2: Load from localStorage cache (last resort)
         if (!dataLoaded) {
             const savedPapers = localStorage.getItem('literaturePapers');
             if (savedPapers) {
@@ -146,47 +123,46 @@ class LiteratureManager {
                     if (Array.isArray(parsedPapers) && parsedPapers.length > 0) {
                         this.papers = parsedPapers;
                         this.filteredPapers = [...this.papers];
-                        console.log('Loaded', this.papers.length, 'papers from localStorage');
+                        console.log('Loaded', this.papers.length, 'papers from localStorage cache');
                         
                         setTimeout(() => {
-                            this.showNotification(`Loaded ${this.papers.length} papers from temporary storage (migration to persistent storage recommended)`, 'warning');
-                            this.updateSyncBanner(`Temporary data loaded - ${this.papers.length} papers total`, 'warning');
+                            this.showNotification(`Loaded ${this.papers.length} papers from temporary cache (sync recommended)`, 'warning');
+                            this.updateSyncBanner(`Temporary cache loaded - ${this.papers.length} papers total`, 'warning');
                         }, 500);
                         dataLoaded = true;
                     }
                 } catch (error) {
-                    console.error('Failed to parse localStorage data:', error);
-                    this.showNotification('Failed to parse local storage data', 'warning');
+                    console.error('Failed to parse localStorage cache:', error);
+                    this.showNotification('Failed to parse local cache data', 'warning');
                 }
             }
         }
         
-        // If all methods failed
+        // 4. No data found anywhere
         if (!dataLoaded) {
             this.papers = [];
             this.filteredPapers = [];
-            console.log('No saved data found, system ready for new uploads');
+            console.log('No data found in any source, system ready for new uploads');
             this.updateSyncBanner('No data found, system ready for new paper uploads', 'info');
         }
     }
     
     // Save data to persistent storage
     async saveData() {
-        // First try to save to IndexedDB
+        // First try to save to IndexedDB for local cache
         if (this.storage) {
             try {
-                // Save each paper to IndexedDB
+                // Save each paper to IndexedDB (for offline access)
                 for (const paper of this.papers) {
                     await this.storage.savePaper(paper);
                 }
-                console.log('Data saved to IndexedDB (permanent storage)');
-                return;
+                console.log('Data cached to IndexedDB (local cache)');
             } catch (error) {
-                console.error('Failed to save to IndexedDB, falling back to localStorage:', error);
+                console.error('Failed to save to IndexedDB:', error);
             }
         }
         
-        // Fallback to localStorage
+        // Also save to localStorage as fallback cache
         try {
             const papersToSave = this.papers.map(paper => {
                 const paperCopy = { ...paper };
@@ -197,18 +173,41 @@ class LiteratureManager {
             });
             
             localStorage.setItem('literaturePapers', JSON.stringify(papersToSave));
-            console.log('Data saved to localStorage (temporary storage)');
+            console.log('Data cached to localStorage (fallback cache)');
         } catch (error) {
-            console.error('Failed to save data:', error);
+            console.error('Failed to save to localStorage:', error);
             if (error.name === 'QuotaExceededError') {
                 this.showNotification('Storage space insufficient! Data may be lost, please consider cleaning old data or using smaller files.', 'error');
             } else {
                 this.showNotification('Data save failed! Refreshing the page may cause data loss.', 'error');
             }
         }
+        
+        // Note: GitHub data repository is the main source of truth
+        // Data will be synced to GitHub repository automatically after uploads
     }
     
-    setupEventListeners() {
+    // HTML安全转义函数
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 文件去重检测
+    async generateFileHash(file) {
+        const buffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    
+    // 检查文件是否已存在
+    async checkDuplicateFile(file) {
+        const fileHash = await this.generateFileHash(file);
+        return this.papers.find(paper => paper.fileHash === fileHash);
+    }
         // Search functionality
         document.getElementById('searchInput').addEventListener('input', (e) => {
             this.filters.search = e.target.value.toLowerCase();
@@ -677,7 +676,8 @@ class LiteratureManager {
                     </div>
                     <div class="paper-image-container" onclick="literatureManager.showPaperDetails(${paper.id})">
                         ${paper.thumbnail ? 
-                            `<img src="${paper.thumbnail}" alt="PDF Preview" class="paper-thumbnail" />` :
+                            `<img src="${paper.thumbnail}" alt="PDF Preview" class="paper-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                             <div class="paper-icon" style="display: none;">${this.getPaperIcon(paper.researchArea)}</div>` :
                             `<div class="paper-icon">${this.getPaperIcon(paper.researchArea)}</div>`
                         }
                         <div class="image-overlay" onclick="event.stopPropagation(); literatureManager.showImageManager(${paper.id})">
@@ -863,7 +863,8 @@ class LiteratureManager {
             <div class="paper-details-layout">
                 <div class="paper-details-image">
                     ${paper.thumbnail ? 
-                        `<img src="${paper.thumbnail}" alt="PDF Preview" class="paper-details-thumbnail" />` :
+                        `<img src="${paper.thumbnail}" alt="PDF Preview" class="paper-details-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                         <div class="paper-details-icon" style="display: none;">${this.getPaperIcon(paper.researchArea)}</div>` :
                         `<div class="paper-details-icon">${this.getPaperIcon(paper.researchArea)}</div>`
                     }
                 </div>
@@ -1332,9 +1333,9 @@ class LiteratureManager {
             return;
         }
         
-        if (files.length > 50) {
-            this.showNotification('Maximum 50 files allowed per batch. Only first 50 files will be processed.', 'warning');
-            files = Array.from(files).slice(0, 50);
+        if (files.length > 100) {
+            this.showNotification('Maximum 100 files allowed per batch. Only first 100 files will be processed.', 'warning');
+            files = Array.from(files).slice(0, 100);
         }
         
         // Filter supported file types
@@ -1894,6 +1895,8 @@ class LiteratureManager {
                             const paperIndex = this.papers.findIndex(p => p.id === paper.id);
                             if (paperIndex !== -1) {
                                 this.papers[paperIndex] = { ...this.papers[paperIndex], ...syncedPaper };
+                                // Clear local PDF file to avoid duplication
+                                delete this.papers[paperIndex].pdfFile;
                                 console.log(`Paper ${paper.title} updated with GitHub URLs`);
                             }
                             
@@ -2318,25 +2321,52 @@ class LiteratureManager {
     async generatePDFThumbnail(pdf) {
         try {
             const page = await pdf.getPage(1); // Get first page
-            const scale = 1.5;
+            const scale = 1.2;
             const viewport = page.getViewport({ scale });
             
-            // Create canvas
+            // Create canvas with proper dimensions
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+            
+            // Set canvas dimensions
+            const maxWidth = 300;
+            const maxHeight = 400;
+            let canvasWidth = viewport.width;
+            let canvasHeight = viewport.height;
+            
+            // Scale down if too large
+            if (canvasWidth > maxWidth || canvasHeight > maxHeight) {
+                const ratio = Math.min(maxWidth / canvasWidth, maxHeight / canvasHeight);
+                canvasWidth *= ratio;
+                canvasHeight *= ratio;
+            }
+            
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            // Scale viewport to match canvas size
+            const finalScale = canvasWidth / viewport.width * scale;
+            const finalViewport = page.getViewport({ scale: finalScale });
             
             // Render PDF page to canvas
             const renderContext = {
                 canvasContext: context,
-                viewport: viewport
+                viewport: finalViewport
             };
             
             await page.render(renderContext).promise;
             
-            // Convert canvas to data URL
-            return canvas.toDataURL('image/jpeg', 0.8);
+            // Convert canvas to data URL with good quality
+            const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            
+            // Validate the generated thumbnail
+            if (thumbnailDataUrl && thumbnailDataUrl.length > 100) {
+                console.log('Thumbnail generated successfully, size:', thumbnailDataUrl.length);
+                return thumbnailDataUrl;
+            } else {
+                console.warn('Generated thumbnail is invalid or too small');
+                return null;
+            }
         } catch (error) {
             console.error('Thumbnail generation error:', error);
             return null;
@@ -2580,6 +2610,8 @@ class LiteratureManager {
                     const paperIndex = this.papers.findIndex(p => p.id === paperData.id);
                     if (paperIndex !== -1) {
                         this.papers[paperIndex] = { ...this.papers[paperIndex], ...syncedPaper };
+                        // Clear local PDF file to avoid duplication
+                        delete this.papers[paperIndex].pdfFile;
                         console.log('Paper updated with GitHub URLs:', this.papers[paperIndex]);
                     }
                 }

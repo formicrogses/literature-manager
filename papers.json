@@ -1,6 +1,9 @@
 {
+    "note": "This file is now deprecated. Data is stored in GitHub repository 'formicrogses/literature-manager-data'",
     "papers": [],
     "lastUpdate": "2024-01-15T10:30:00Z",
     "totalCount": 0,
-    "version": "1.0"
+    "version": "1.0",
+    "deprecated": true,
+    "dataSource": "GitHub repository: formicrogses/literature-manager-data"
 }
