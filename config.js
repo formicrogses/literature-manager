@@ -1,10 +1,10 @@
 // config.js - GitHub自动同步配置
 window.GITHUB_CONFIG = {
     // 你的GitHub用户名
-    username: 'wazgtam1',
+    username: 'formicrogses',
     
     // 数据仓库名
-    dataRepo: 'literature-data',
+    dataRepo: 'literature-manager-data',
     
     // GitHub Personal Access Token (请通过配置界面设置)
     token: '',
