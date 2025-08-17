@@ -1,18 +1,18 @@
-// config.js - GitHub自动同步配置
+// config.js - GitHub Auto-sync Configuration
 window.GITHUB_CONFIG = {
-    // 你的GitHub用户名
+    // Your GitHub username
     username: 'formicrogses',
     
-    // 数据仓库名
+    // Data repository name
     dataRepo: 'literature-manager-data',
     
-    // GitHub Personal Access Token (请通过配置界面设置)
+    // GitHub Personal Access Token (please set through configuration interface)
     token: '',
     
-    // API基础URL
+    // API base URL
     apiBase: 'https://api.github.com',
     
-    // 文件路径配置
+    // File path configuration
     paths: {
         papers: 'papers.json',
         pdfs: 'pdfs/',
@@ -20,7 +20,7 @@ window.GITHUB_CONFIG = {
     }
 };
 
-// 设置GitHub配置的函数
+// Function to set GitHub configuration
 window.setupGitHub = function(username, token) {
     window.GITHUB_CONFIG.username = username;
     window.GITHUB_CONFIG.token = token;
@@ -29,7 +29,7 @@ window.setupGitHub = function(username, token) {
     console.log('GitHub configuration saved');
 };
 
-// 获取配置状态
+// Get configuration status
 window.getGitHubStatus = function() {
     return {
         configured: window.GITHUB_CONFIG.username !== 'YOUR_USERNAME' && 
@@ -40,7 +40,7 @@ window.getGitHubStatus = function() {
     };
 };
 
-// 页面加载时自动加载保存的配置
+// Automatically load saved configuration when page loads
 document.addEventListener('DOMContentLoaded', () => {
     const savedUsername = localStorage.getItem('github_username');
     const savedToken = localStorage.getItem('github_token');

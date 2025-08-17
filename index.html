@@ -22,7 +22,7 @@
                     <button class="btn btn--primary search-btn" id="searchBtn">Search</button>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn--outline" id="configGitHub">⚙️ GitHub配置</button>
+                    <button class="btn btn--outline" id="configGitHub">⚙️ GitHub Configuration</button>
                     <button class="btn btn--primary" id="uploadBtn">Upload Paper</button>
                 </div>
             </div>
@@ -32,10 +32,10 @@
     <!-- Cloud Sync Status Banner -->
     <div class="sync-banner" id="syncBanner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 0; text-align: center; font-size: 14px;">
         <div class="container">
-            <span id="syncStatusText">🔄 云端同步已启用 - 上传的论文将自动同步到GitHub，任何人都可以访问</span>
+            <span id="syncStatusText">🔄 Cloud sync enabled - Uploaded papers will automatically sync to GitHub and be accessible to everyone</span>
             <button onclick="document.getElementById('configGitHub').click()" 
                     style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 8px; border-radius: 3px; cursor: pointer; margin-left: 10px; font-size: 12px;">
-                ⚙️ 配置
+                ⚙️ Configure
             </button>
         </div>
     </div>
@@ -513,44 +513,44 @@
     <div class="modal hidden" id="githubConfigModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>GitHub云端同步配置</h3>
+                <h3>GitHub Cloud Sync Configuration</h3>
                 <button class="modal-close" id="closeGitHubConfig">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="config-section">
-                    <h4>📡 自动云端同步</h4>
-                    <p>配置后，上传的论文将自动同步到GitHub，任何人都能看到你的内容</p>
+                    <h4>📡 Automatic Cloud Sync</h4>
+                    <p>After configuration, uploaded papers will automatically sync to GitHub and be visible to everyone</p>
                     
                     <div class="form-group">
-                        <label>GitHub用户名 *</label>
-                        <input type="text" id="githubUsername" class="form-control" placeholder="你的GitHub用户名" value="wazgtam1">
+                        <label>GitHub Username *</label>
+                        <input type="text" id="githubUsername" class="form-control" placeholder="Your GitHub username" value="wazgtam1">
                     </div>
                     
                     <div class="form-group">
                         <label>GitHub Token *</label>
                         <input type="password" id="githubToken" class="form-control" placeholder="Personal Access Token" value="">
                         <small style="color: #666; font-size: 12px;">
-                            <a href="https://github.com/settings/tokens" target="_blank">获取Token</a>
-                            （需要repo权限）
+                            <a href="https://github.com/settings/tokens" target="_blank">Get Token</a>
+                            (requires repo permissions)
                         </small>
                     </div>
                     
                     <div class="form-group">
-                        <label>数据仓库名</label>
+                        <label>Data Repository Name</label>
                         <input type="text" id="githubRepo" class="form-control" value="literature-data" readonly>
-                        <small style="color: #666; font-size: 12px;">系统会自动使用这个仓库存储数据</small>
+                        <small style="color: #666; font-size: 12px;">The system will automatically use this repository to store data</small>
                     </div>
                     
                     <div class="config-status" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                        <strong>状态：</strong>
-                        <span id="configStatusText">检查中...</span>
+                        <strong>Status:</strong>
+                        <span id="configStatusText">Checking...</span>
                     </div>
                 </div>
                 
                 <div class="form-actions" style="margin-top: 20px;">
-                    <button type="button" class="btn btn--outline" id="cancelGitHubConfig">取消</button>
-                    <button type="button" class="btn btn--secondary" id="testGitHubConfig">测试连接</button>
-                    <button type="button" class="btn btn--primary" id="saveGitHubConfig">保存配置</button>
+                    <button type="button" class="btn btn--outline" id="cancelGitHubConfig">Cancel</button>
+                    <button type="button" class="btn btn--secondary" id="testGitHubConfig">Test Connection</button>
+                    <button type="button" class="btn btn--primary" id="saveGitHubConfig">Save Configuration</button>
                 </div>
             </div>
         </div>

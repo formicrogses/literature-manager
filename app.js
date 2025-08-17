@@ -71,11 +71,11 @@ class LiteratureManager {
     async loadData() {
         let dataLoaded = false;
         
-        // 1. 首先尝试从GitHub加载共享数据（如果已配置token）
+        // 1. First try to load shared data from GitHub (if token is configured)
         if (window.githubSync && window.githubSync.isConfigured()) {
             try {
                 console.log('Loading shared data from GitHub with authentication...');
-                this.updateSyncBanner('正在从云端加载数据...', 'loading');
+                this.updateSyncBanner('Loading data from cloud...', 'loading');
                 const sharedPapers = await window.githubSync.loadSharedData();
                 if (sharedPapers && sharedPapers.length > 0) {
                     this.papers = sharedPapers;
@@ -83,22 +83,22 @@ class LiteratureManager {
                     console.log('Loaded', this.papers.length, 'papers from GitHub with auth');
                     
                     setTimeout(() => {
-                        this.showNotification(`已从云端加载 ${this.papers.length} 篇论文`, 'success');
-                        this.updateSyncBanner(`云端同步已启用 - 已加载 ${this.papers.length} 篇论文`, 'success');
+                        this.showNotification(`Loaded ${this.papers.length} papers from cloud`, 'success');
+                        this.updateSyncBanner(`Cloud sync enabled - loaded ${this.papers.length} papers`, 'success');
                     }, 500);
                     dataLoaded = true;
                 }
             } catch (error) {
                 console.error('Failed to load from GitHub with auth:', error);
-                this.showNotification('GitHub认证加载失败，尝试公共访问: ' + error.message, 'warning');
+                this.showNotification('GitHub authentication failed, trying public access: ' + error.message, 'warning');
             }
         }
         
-        // 2. 如果GitHub认证加载失败或未配置，尝试从公共数据文件加载（用于访客访问）
+        // 2. If GitHub authentication failed or not configured, try loading from public data files (for visitor access)
         if (!dataLoaded) {
             try {
                 console.log('Loading from public data sources...');
-                this.updateSyncBanner('正在加载公共论文数据...', 'loading');
+                this.updateSyncBanner('Loading public paper data...', 'loading');
                 const staticPapers = await this.loadStaticData();
                 if (staticPapers && staticPapers.length > 0) {
                     this.papers = staticPapers;
@@ -106,18 +106,18 @@ class LiteratureManager {
                     console.log('Loaded', this.papers.length, 'papers from public data sources');
                     
                     setTimeout(() => {
-                        this.showNotification(`已加载 ${this.papers.length} 篇论文（公共访问）`, 'success');
-                        this.updateSyncBanner(`公共数据已加载 - 共 ${this.papers.length} 篇论文`, 'success');
+                        this.showNotification(`Loaded ${this.papers.length} papers (public access)`, 'success');
+                        this.updateSyncBanner(`Public data loaded - ${this.papers.length} papers total`, 'success');
                     }, 500);
                     dataLoaded = true;
                 }
             } catch (error) {
                 console.error('Failed to load public data:', error);
-                this.updateSyncBanner('公共数据加载失败，使用本地存储', 'warning');
+                this.updateSyncBanner('Public data loading failed, using local storage', 'warning');
             }
         }
         
-        // 3. 降级到IndexedDB本地数据（仅在前面步骤都失败时）
+        // 3. Fall back to IndexedDB local data (only when previous steps fail)
         if (!dataLoaded && this.storage) {
             try {
                 const papers = await this.storage.getAllPapers();
@@ -127,8 +127,8 @@ class LiteratureManager {
                     console.log('Loaded', this.papers.length, 'papers from IndexedDB');
                     
                     setTimeout(() => {
-                        this.showNotification(`已从本地永久存储加载 ${this.papers.length} 篇论文`, 'success');
-                        this.updateSyncBanner(`本地数据已加载 - 共 ${this.papers.length} 篇论文`, 'info');
+                        this.showNotification(`Loaded ${this.papers.length} papers from local persistent storage`, 'success');
+                        this.updateSyncBanner(`Local data loaded - ${this.papers.length} papers total`, 'info');
                     }, 500);
                     dataLoaded = true;
                 }
@@ -137,7 +137,7 @@ class LiteratureManager {
             }
         }
         
-        // 4. 最后降级到localStorage（仅在所有前面步骤都失败时）
+        // 4. Finally fall back to localStorage (only when all previous steps fail)
         if (!dataLoaded) {
             const savedPapers = localStorage.getItem('literaturePapers');
             if (savedPapers) {
@@ -149,8 +149,8 @@ class LiteratureManager {
                         console.log('Loaded', this.papers.length, 'papers from localStorage');
                         
                         setTimeout(() => {
-                            this.showNotification(`已从临时存储加载 ${this.papers.length} 篇论文 (建议迁移到永久存储)`, 'warning');
-                            this.updateSyncBanner(`临时数据已加载 - 共 ${this.papers.length} 篇论文`, 'warning');
+                            this.showNotification(`Loaded ${this.papers.length} papers from temporary storage (migration to persistent storage recommended)`, 'warning');
+                            this.updateSyncBanner(`Temporary data loaded - ${this.papers.length} papers total`, 'warning');
                         }, 500);
                         dataLoaded = true;
                     }
@@ -161,12 +161,12 @@ class LiteratureManager {
             }
         }
         
-        // 如果所有方法都失败了
+        // If all methods failed
         if (!dataLoaded) {
             this.papers = [];
             this.filteredPapers = [];
             console.log('No saved data found, system ready for new uploads');
-            this.updateSyncBanner('未找到数据，系统已准备好接受新的论文上传', 'info');
+            this.updateSyncBanner('No data found, system ready for new paper uploads', 'info');
         }
     }
     
@@ -201,9 +201,9 @@ class LiteratureManager {
         } catch (error) {
             console.error('Failed to save data:', error);
             if (error.name === 'QuotaExceededError') {
-                this.showNotification('存储空间不足！数据可能丢失，请考虑清理旧数据或使用较小的文件。', 'error');
+                this.showNotification('Storage space insufficient! Data may be lost, please consider cleaning old data or using smaller files.', 'error');
             } else {
-                this.showNotification('数据保存失败！刷新页面可能丢失数据。', 'error');
+                this.showNotification('Data save failed! Refreshing the page may cause data loss.', 'error');
             }
         }
     }
@@ -1011,15 +1011,15 @@ class LiteratureManager {
                                     `<span class="size-info compressed">
                                         📁 ${this.formatFileSize(paper.pdfFileSize)} 
                                         <small class="compression-info">
-                                            (压缩自 ${this.formatFileSize(paper.originalFileSize)}, 
-                                            节省 ${Math.round((1 - paper.pdfFileSize / paper.originalFileSize) * 100)}%)
+                                            (compressed from ${this.formatFileSize(paper.originalFileSize)}, 
+                                            saved ${Math.round((1 - paper.pdfFileSize / paper.originalFileSize) * 100)}%)
                                         </small>
                                     </span>` :
                                     `<span class="size-info">${this.formatFileSize(paper.pdfFileSize)}</span>`
                                 }
                                 ${paper.parseWarning ? 
                                     `<div class="parse-warning">
-                                        <small>⚠️ PDF解析遇到问题，部分信息可能不完整</small>
+                                        <small>⚠️ PDF parsing encountered issues, some information may be incomplete</small>
                                     </div>` : ''
                                 }
                             </div>
@@ -1459,17 +1459,17 @@ class LiteratureManager {
     getFileStatusContent(fileItem) {
         switch (fileItem.status) {
             case 'queued':
-                return '<span class="file-status-text">排队中</span>';
+                return '<span class="file-status-text">Queued</span>';
             case 'processing':
-                const statusText = fileItem.statusText || '处理中';
+                const statusText = fileItem.statusText || 'Processing';
                 return `<div class="processing-spinner"></div><span class="file-status-text">${statusText}</span>`;
             case 'completed':
-                return '<span class="file-status-text">✓ 完成</span>';
+                return '<span class="file-status-text">✓ Completed</span>';
             case 'failed':
-                const errorText = fileItem.statusText || fileItem.error || '失败';
+                const errorText = fileItem.statusText || fileItem.error || 'Failed';
                 return `<span class="file-status-text">✗ ${errorText}</span>`;
             default:
-                return '<span class="file-status-text">未知状态</span>';
+                return '<span class="file-status-text">Unknown status</span>';
         }
     }
     
@@ -1653,16 +1653,16 @@ class LiteratureManager {
                 if (fileItem.status === 'processing') {
                     if (fileItem.progress < 20) {
                         fileItem.progress += 3;
-                        fileItem.statusText = '检查文件大小...';
+                        fileItem.statusText = 'Checking file size...';
                     } else if (fileItem.progress < 40) {
                         fileItem.progress += 4;
-                        fileItem.statusText = fileItem.file.size > 2*1024*1024 ? '正在自动压缩PDF...' : '解析文件中...';
+                        fileItem.statusText = fileItem.file.size > 2*1024*1024 ? 'Auto-compressing PDF...' : 'Parsing file...';
                     } else if (fileItem.progress < 60) {
                         fileItem.progress += 3;
-                        fileItem.statusText = '生成缩略图...';
+                        fileItem.statusText = 'Generating thumbnail...';
                     } else if (fileItem.progress < 90) {
                         fileItem.progress += 2;
-                        fileItem.statusText = '上传到云端...';
+                        fileItem.statusText = 'Uploading to cloud...';
                     }
                     this.updateFileItemUI(fileItem);
                 }
@@ -1670,7 +1670,7 @@ class LiteratureManager {
             
             // Add timeout protection
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('处理超时，请重试')), 120000); // 2 minutes timeout
+                setTimeout(() => reject(new Error('Processing timeout, please retry')), 120000); // 2 minutes timeout
             });
             
             const parsePromise = this.parseFile(fileItem.file, selectedCategory);
@@ -1680,13 +1680,13 @@ class LiteratureManager {
             
             if (paperData) {
                 fileItem.progress = 90;
-                fileItem.statusText = '保存中...';
+                fileItem.statusText = 'Saving...';
                 this.updateFileItemUI(fileItem);
                 
-                await this.addPaper(paperData, false); // 跳过立即同步，批量完成后统一同步
+                await this.addPaper(paperData, false); // Skip immediate sync, batch sync after completion
                 fileItem.status = 'completed';
                 fileItem.progress = 100;
-                fileItem.statusText = '完成';
+                fileItem.statusText = 'Completed';
                 fileItem.result = paperData;
                 this.batchUploadState.completed++;
             } else {
@@ -1697,7 +1697,7 @@ class LiteratureManager {
             console.error(`File ${fileItem.name} processing failed:`, error);
             fileItem.status = 'failed';
             fileItem.error = error.message;
-            fileItem.statusText = '失败: ' + error.message;
+            fileItem.statusText = 'Failed: ' + error.message;
             this.batchUploadState.failed++;
         }
         
@@ -1854,43 +1854,43 @@ class LiteratureManager {
         this.renderPapersGrid();
         this.updatePagination();
         
-        // 批量同步到GitHub（关键修复）
+        // Batch sync to GitHub (critical fix)
         if (completedCount > 0 && window.githubSync && window.githubSync.isConfigured()) {
             try {
-                // 获取所有成功上传的论文
+                // Get all successfully uploaded papers
                 const successfulPapers = this.batchUploadState.files
                     .filter(f => f.status === 'completed' && f.result)
                     .map(f => f.result);
                 
-                // 显示GitHub同步面板
+                // Show GitHub sync panel
                 this.showGitHubSyncPanel(successfulPapers.length);
                 
-                this.showNotification('正在批量同步到云端...', 'info');
-                this.updateSyncBanner('正在批量同步论文到云端...', 'loading');
+                this.showNotification('Batch syncing to cloud...', 'info');
+                this.updateSyncBanner('Batch syncing papers to cloud...', 'loading');
                 
-                console.log(`开始批量同步 ${successfulPapers.length} 篇论文到GitHub`);
-                console.log('成功的论文列表:', successfulPapers.map(p => ({ id: p.id, title: p.title, hasPDF: !!p.pdfFile })));
+                console.log(`Starting batch sync of ${successfulPapers.length} papers to GitHub`);
+                console.log('Successful papers list:', successfulPapers.map(p => ({ id: p.id, title: p.title, hasPDF: !!p.pdfFile })));
                 
                 let syncedCount = 0;
                 
-                // 同步每个论文的PDF文件（添加延迟避免冲突）
+                // Sync each paper's PDF file (add delay to avoid conflicts)
                 for (let i = 0; i < successfulPapers.length; i++) {
                     const paper = successfulPapers[i];
                     if (paper.pdfFile) {
                         try {
-                            // 更新进度
+                            // Update progress
                             this.updateSyncProgress(i, successfulPapers.length, `Syncing: ${paper.title}`);
                             this.addSyncItem(paper.title, 'processing');
                             
-                            // 添加小延迟确保时间戳唯一性
+                            // Add small delay to ensure timestamp uniqueness
                             if (i > 0) {
                                 await new Promise(resolve => setTimeout(resolve, 100));
                             }
                             
-                            console.log(`正在同步第 ${i + 1}/${successfulPapers.length} 个PDF: ${paper.title}`);
+                            console.log(`Syncing PDF ${i + 1}/${successfulPapers.length}: ${paper.title}`);
                             const syncedPaper = await window.githubSync.syncPaper(paper, paper.pdfFile);
                             
-                            // 更新论文信息（替换本地URL为GitHub URL）
+                            // Update paper info (replace local URLs with GitHub URLs)
                             const paperIndex = this.papers.findIndex(p => p.id === paper.id);
                             if (paperIndex !== -1) {
                                 this.papers[paperIndex] = { ...this.papers[paperIndex], ...syncedPaper };
@@ -1907,31 +1907,31 @@ class LiteratureManager {
                     }
                 }
                 
-                // 更新进度为同步数据库
+                // Update progress to syncing database
                 this.updateSyncProgress(successfulPapers.length, successfulPapers.length, 'Updating papers database...');
                 
-                // 同步所有论文数据到papers.json
+                // Sync all paper data to papers.json
                 await window.githubSync.syncAllData(this.papers);
                 
-                // 同步公共数据快照到主仓库（用于访客访问）
+                // Sync public data snapshot to main repository (for visitor access)
                 await this.syncPublicDataSnapshot();
                 
-                // 重新保存更新后的数据
+                // Re-save updated data
                 await this.saveData();
                 
-                // 完成同步
+                // Complete sync
                 this.completeSyncProgress(syncedCount, successfulPapers.length);
                 
-                this.showNotification(`🎉 批量上传完成！${completedCount} 篇论文已同步到云端`, 'success');
-                this.updateSyncBanner(`批量同步成功 - 共 ${this.papers.length} 篇论文`, 'success');
+                this.showNotification(`🎉 Batch upload completed! ${completedCount} papers synced to cloud`, 'success');
+                this.updateSyncBanner(`Batch sync successful - ${this.papers.length} papers total`, 'success');
                 
             } catch (error) {
                 console.error('Batch GitHub sync failed:', error);
-                this.showNotification(`批量上传完成，但云端同步失败：${error.message}`, 'warning');
-                this.updateSyncBanner('批量同步失败，仅保存到本地', 'warning');
+                this.showNotification(`Batch upload completed, but cloud sync failed: ${error.message}`, 'warning');
+                this.updateSyncBanner('Batch sync failed, saved locally only', 'warning');
             }
         } else if (completedCount > 0) {
-            // GitHub未配置或无成功文件
+            // GitHub not configured or no successful files
             this.showNotification(`🎉 Batch upload completed! ${completedCount} papers added successfully.`, 'success');
         }
         
@@ -2005,7 +2005,7 @@ class LiteratureManager {
     
     async parsePDF(file, selectedCategory = 'auto') {
         try {
-            // 首先验证PDF文件
+            // First verify PDF file
             const isValidPDF = await this.validatePDFFile(file);
             if (!isValidPDF) {
                 console.warn('Invalid PDF file detected, using fallback parsing');
@@ -2017,10 +2017,10 @@ class LiteratureManager {
             const sizeLimit = 2 * 1024 * 1024; // 2MB
             
             if (file.size > sizeLimit) {
-                console.log(`PDF文件较大 (${this.formatFileSize(file.size)})，正在自动压缩...`);
+                console.log(`PDF file is large (${this.formatFileSize(file.size)}), auto-compressing...`);
                 try {
                     processedFile = await this.compressPDF(file);
-                    console.log(`压缩完成：${this.formatFileSize(file.size)} → ${this.formatFileSize(processedFile.size)}`);
+                    console.log(`Compression completed: ${this.formatFileSize(file.size)} → ${this.formatFileSize(processedFile.size)}`);
                 } catch (compressionError) {
                     console.warn('PDF compression failed, using original file:', compressionError);
                     processedFile = file;
@@ -2114,7 +2114,7 @@ class LiteratureManager {
                         originalFileSize: file.size, // Store original file size for reference
                         isCompressed: file.size !== processedFile.size,
                         isPersistentPDF: true, // Flag to indicate this PDF will persist
-                        pdfFile: processedFile // 关键修复：传递实际的PDF文件对象用于GitHub上传
+                        pdfFile: processedFile // Critical fix: pass actual PDF file object for GitHub upload
                     };
                 } catch (pdfError) {
                     console.warn('PDF.js parsing failed:', pdfError);
@@ -2131,7 +2131,7 @@ class LiteratureManager {
             try {
                 return this.createFallbackPaperData(file, selectedCategory);
             } catch (fallbackError) {
-                throw new Error('PDF解析完全失败: ' + error.message);
+                throw new Error('PDF parsing completely failed: ' + error.message);
             }
         }
     }
@@ -2184,7 +2184,7 @@ class LiteratureManager {
             citations: 0,
             hIndex: 0,
             downloads: 0,
-            abstract: `PDF文件"${file.name}"已上传，但无法解析内容。请手动编辑相关信息。可能原因：文件损坏、密码保护或不支持的PDF格式。`,
+            abstract: `PDF file "${file.name}" has been uploaded but content could not be parsed. Please manually edit relevant information. Possible reasons: file corruption, password protection, or unsupported PDF format.`,
             doi: '',
             pdfUrl: pdfBase64 || '#',
             websiteUrl: '#',
@@ -2194,7 +2194,7 @@ class LiteratureManager {
             isCompressed: processedFile ? (file.size !== processedFile.size) : false,
             isPersistentPDF: !!pdfBase64,
             parseWarning: true, // Flag to indicate parsing had issues
-            pdfFile: actualFile // 关键修复：传递实际的PDF文件对象用于GitHub上传
+            pdfFile: actualFile // Critical fix: pass actual PDF file object for GitHub upload
         };
     }
     
@@ -2567,16 +2567,16 @@ class LiteratureManager {
         await this.saveData(); // Save to persistent storage
         console.log('Data saved to storage');
         
-        // 🚀 自动同步到GitHub（关键代码）- 可通过skipSync参数跳过
+        // 🚀 Auto sync to GitHub (critical code) - can be skipped via skipSync parameter
         if (!skipSync && window.githubSync && window.githubSync.isConfigured()) {
             try {
-                this.showNotification('正在同步到云端...', 'info');
-                this.updateSyncBanner('正在同步论文到云端...', 'loading');
+                this.showNotification('Syncing to cloud...', 'info');
+                this.updateSyncBanner('Syncing paper to cloud...', 'loading');
                 
-                // 如果有PDF文件，先同步单篇论文
+                // If there's a PDF file, sync individual paper first
                 if (paperData.pdfFile) {
                     const syncedPaper = await window.githubSync.syncPaper(paperData, paperData.pdfFile);
-                    // 更新论文信息（替换本地URL为GitHub URL）
+                    // Update paper info (replace local URLs with GitHub URLs)
                     const paperIndex = this.papers.findIndex(p => p.id === paperData.id);
                     if (paperIndex !== -1) {
                         this.papers[paperIndex] = { ...this.papers[paperIndex], ...syncedPaper };
@@ -2584,39 +2584,39 @@ class LiteratureManager {
                     }
                 }
                 
-                // 同步所有论文数据
+                // Sync all paper data
                 await window.githubSync.syncAllData(this.papers);
                 
-                // 同步公共数据快照到主仓库（用于访客访问）
+                // Sync public data snapshot to main repository (for visitor access)
                 await this.syncPublicDataSnapshot();
                 
-                this.showNotification('论文已自动同步到云端！其他人现在可以看到了', 'success');
-                this.updateSyncBanner(`云端同步成功 - 共 ${this.papers.length} 篇论文`, 'success');
+                this.showNotification('Paper auto-synced to cloud! Others can now see it', 'success');
+                this.updateSyncBanner(`Cloud sync successful - ${this.papers.length} papers total`, 'success');
                 
-                // 重新保存更新后的数据
+                // Re-save updated data
                 await this.saveData();
                 
             } catch (error) {
                 console.error('GitHub sync failed:', error);
                 
-                // 根据错误类型提供不同的提示
-                let errorMessage = '云端同步失败：';
+                // Provide different messages based on error type
+                let errorMessage = 'Cloud sync failed: ';
                 if (error.message.includes('does not match')) {
-                    errorMessage += '文件版本冲突，已自动重试';
+                    errorMessage += 'File version conflict, auto-retrying';
                 } else if (error.message.includes('401')) {
-                    errorMessage += 'GitHub Token无效，请重新配置';
+                    errorMessage += 'GitHub Token invalid, please reconfigure';
                 } else if (error.message.includes('404')) {
-                    errorMessage += '仓库不存在，请检查配置';
+                    errorMessage += 'Repository does not exist, please check configuration';
                 } else {
                     errorMessage += error.message;
                 }
                 
                 this.showNotification(errorMessage, 'warning');
-                this.updateSyncBanner('云端同步失败，仅保存到本地', 'warning');
+                this.updateSyncBanner('Cloud sync failed, saved locally only', 'warning');
             }
         } else {
-            this.showNotification('GitHub未配置，论文已保存到本地', 'warning');
-            this.updateSyncBanner('未配置GitHub同步，仅保存到本地', 'warning');
+            this.showNotification('GitHub not configured, paper saved locally', 'warning');
+            this.updateSyncBanner('GitHub sync not configured, saved locally only', 'warning');
         }
         
         this.applyFilters();
@@ -3077,10 +3077,10 @@ class LiteratureManager {
         document.body.removeChild(link);
     }
     
-    // =================== GitHub配置相关方法 ===================
+    // =================== GitHub Configuration Related Methods ===================
     
     showGitHubConfig() {
-        // 显示当前配置
+        // Show current configuration
         if (window.GITHUB_CONFIG.username !== 'YOUR_USERNAME') {
             document.getElementById('githubUsername').value = window.GITHUB_CONFIG.username;
         }
@@ -3101,18 +3101,18 @@ class LiteratureManager {
         const token = document.getElementById('githubToken').value.trim();
         
         if (!username || !token) {
-            this.showNotification('请填写完整的GitHub信息', 'error');
+            this.showNotification('Please fill in complete GitHub information', 'error');
             return;
         }
         
-        // 保存配置
+        // Save configuration
         window.setupGitHub(username, token);
         this.updateConfigStatus();
         this.hideGitHubConfig();
-        this.showNotification('GitHub配置已保存，现在上传的论文将自动同步到云端', 'success');
-        this.updateSyncBanner('GitHub配置已保存，将启用云端同步', 'success');
+        this.showNotification('GitHub configuration saved, uploaded papers will now auto-sync to cloud', 'success');
+        this.updateSyncBanner('GitHub configuration saved, cloud sync will be enabled', 'success');
         
-        // 重新加载数据以启用GitHub同步
+        // Reload data to enable GitHub sync
         setTimeout(() => {
             window.location.reload();
         }, 2000);
@@ -3123,38 +3123,38 @@ class LiteratureManager {
         const token = document.getElementById('githubToken').value.trim();
         
         if (!username || !token) {
-            this.showNotification('请先填写GitHub信息', 'error');
+            this.showNotification('Please fill in GitHub information first', 'error');
             return;
         }
         
         try {
-            document.getElementById('testGitHubConfig').textContent = '测试中...';
+            document.getElementById('testGitHubConfig').textContent = 'Testing...';
             document.getElementById('testGitHubConfig').disabled = true;
             
-            // 临时设置配置进行测试
+            // Temporarily set configuration for testing
             const tempConfig = { ...window.GITHUB_CONFIG };
             window.GITHUB_CONFIG.username = username;
             window.GITHUB_CONFIG.token = token;
             
-            // 测试GitHub API连接
+            // Test GitHub API connection
             const result = await window.githubSync.testConnection();
             
             if (result.success) {
                 this.showNotification(result.message, 'success');
-                document.getElementById('configStatusText').innerHTML = `✅ 连接成功 (${result.user})`;
+                document.getElementById('configStatusText').innerHTML = `✅ Connection successful (${result.user})`;
                 document.getElementById('configStatusText').style.color = '#28a745';
             } else {
                 throw new Error(result.message);
             }
             
         } catch (error) {
-            this.showNotification('连接失败：' + error.message, 'error');
-            document.getElementById('configStatusText').innerHTML = '❌ 连接失败';
+            this.showNotification('Connection failed: ' + error.message, 'error');
+            document.getElementById('configStatusText').innerHTML = '❌ Connection failed';
             document.getElementById('configStatusText').style.color = '#dc3545';
-            // 恢复原配置
+            // Restore original configuration
             window.GITHUB_CONFIG = tempConfig;
         } finally {
-            document.getElementById('testGitHubConfig').textContent = '测试连接';
+            document.getElementById('testGitHubConfig').textContent = 'Test Connection';
             document.getElementById('testGitHubConfig').disabled = false;
         }
     }
@@ -3162,10 +3162,10 @@ class LiteratureManager {
     updateConfigStatus() {
         const statusElement = document.getElementById('configStatusText');
         if (window.githubSync && window.githubSync.isConfigured()) {
-            statusElement.innerHTML = `✅ 已配置 (${window.GITHUB_CONFIG.username})`;
+            statusElement.innerHTML = `✅ Configured (${window.GITHUB_CONFIG.username})`;
             statusElement.style.color = '#28a745';
         } else {
-            statusElement.innerHTML = '❌ 未配置';
+            statusElement.innerHTML = '❌ Not configured';
             statusElement.style.color = '#dc3545';
         }
     }
@@ -3176,7 +3176,7 @@ class LiteratureManager {
         
         if (!banner || !textElement) return;
         
-        // 更新文本
+        // Update text
         if (type === 'loading') {
             textElement.innerHTML = `🔄 ${message}`;
         } else if (type === 'success') {
@@ -3189,7 +3189,7 @@ class LiteratureManager {
             textElement.innerHTML = `💡 ${message}`;
         }
         
-        // 更新样式
+        // Update styles
         if (type === 'success') {
             banner.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
         } else if (type === 'warning') {
@@ -3246,7 +3246,7 @@ class LiteratureManager {
                     await window.githubSync.syncAllData(this.papers);
                     await this.deletePaperFromGitHub(paper);
                     
-                    // 同步公共数据快照到主仓库（用于访客访问）
+                    // Sync public data snapshot to main repository (for visitor access)
                     await this.syncPublicDataSnapshot();
                     
                     this.showNotification('Paper deleted and synced to cloud!', 'success');

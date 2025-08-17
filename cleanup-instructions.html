@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub仓库清理工具</title>
+    <title>GitHub Repository Cleanup Tool</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -74,60 +74,60 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧹 GitHub仓库清理工具</h1>
+        <h1>🧹 GitHub Repository Cleanup Tool</h1>
         
         <div class="warning">
-            <strong>⚠️ 重要提醒：</strong><br>
-            这个操作将删除GitHub仓库中的所有PDF文件和数据文件，此操作不可撤销！<br>
-            请确保你真的要清理所有数据后再进行操作。
+            <strong>⚠️ Important Notice:</strong><br>
+            This operation will delete all PDF files and data files in the GitHub repository. This action cannot be undone!<br>
+            Please make sure you really want to clean up all data before proceeding.
         </div>
 
-        <h2>方法一：使用系统清理功能（推荐）</h2>
+        <h2>Method 1: Use System Cleanup Function (Recommended)</h2>
         
         <div class="step">
-            <h3>步骤 1：打开文献管理系统</h3>
-            <p>访问你的文献管理系统页面：</p>
+            <h3>Step 1: Open Literature Management System</h3>
+            <p>Visit your literature management system page:</p>
             <div class="code">https://wazgtam1.github.io/literature-manager/</div>
         </div>
 
         <div class="step">
-            <h3>步骤 2：配置GitHub</h3>
-            <p>点击页面上的"⚙️ GitHub配置"按钮，确保已经正确配置了你的GitHub信息。</p>
+            <h3>Step 2: Configure GitHub</h3>
+            <p>Click the "⚙️ GitHub Configuration" button on the page to ensure your GitHub information is properly configured.</p>
         </div>
 
         <div class="step">
-            <h3>步骤 3：清空所有论文</h3>
-            <p>在页面右上角找到"🗑️ Clear All"按钮，点击它。</p>
-            <p>系统会要求你确认删除，点击确认即可。</p>
-            <p>系统将自动：</p>
+            <h3>Step 3: Clear All Papers</h3>
+            <p>Find the "🗑️ Clear All" button in the upper right corner of the page and click it.</p>
+            <p>The system will ask you to confirm deletion, click confirm.</p>
+            <p>The system will automatically:</p>
             <ul>
-                <li>删除所有本地论文数据</li>
-                <li>删除GitHub仓库中的所有PDF文件</li>
-                <li>清空所有数据文件</li>
-                <li>重置为空白状态</li>
+                <li>Delete all local paper data</li>
+                <li>Delete all PDF files in the GitHub repository</li>
+                <li>Clear all data files</li>
+                <li>Reset to blank state</li>
             </ul>
         </div>
 
         <div class="success">
-            <strong>✅ 清理完成后：</strong><br>
-            页面会显示"0篇论文"，此时你就可以重新上传论文了。
+            <strong>✅ After cleanup is complete:</strong><br>
+            The page will display "0 papers", and you can then re-upload papers.
         </div>
 
-        <h2>方法二：手动API清理（高级用户）</h2>
+        <h2>Method 2: Manual API Cleanup (Advanced Users)</h2>
         
         <div class="step">
-            <h3>如果方法一不可用，可以使用以下代码：</h3>
-            <p>在浏览器控制台中运行以下代码：</p>
+            <h3>If Method 1 is not available, you can use the following code:</h3>
+            <p>Run the following code in your browser console:</p>
             <div class="code">
-// 替换为你的GitHub Token<br>
-const token = "你的GitHub_TOKEN_在这里";<br>
+// Replace with your GitHub Token<br>
+const token = "YOUR_GITHUB_TOKEN_HERE";<br>
 <br>
-// 加载清理脚本<br>
+// Load cleanup script<br>
 const script = document.createElement('script');<br>
 script.src = './cleanup-github-repo.js';<br>
 document.head.appendChild(script);<br>
 <br>
-// 等待脚本加载后运行<br>
+// Wait for script to load then run<br>
 script.onload = () => {<br>
 &nbsp;&nbsp;const cleaner = new GitHubCleaner(token, "wazgtam1", "literature-data");<br>
 &nbsp;&nbsp;cleaner.cleanupRepository();<br>
@@ -136,25 +136,25 @@ script.onload = () => {<br>
         </div>
 
         <div class="warning">
-            <strong>获取GitHub Token的方法：</strong><br>
-            1. 访问 <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings > Tokens</a><br>
-            2. 点击"Generate new token"<br>
-            3. 选择"repo"权限<br>
-            4. 复制生成的token
+            <strong>How to get GitHub Token:</strong><br>
+            1. Visit <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings > Tokens</a><br>
+            2. Click "Generate new token"<br>
+            3. Select "repo" permissions<br>
+            4. Copy the generated token
         </div>
 
-        <h2>推荐流程</h2>
+        <h2>Recommended Process</h2>
         <ol>
-            <li>使用方法一（系统自带的Clear All功能）</li>
-            <li>确认页面显示"0篇论文"</li>
-            <li>开始重新上传你的论文</li>
+            <li>Use Method 1 (System built-in Clear All function)</li>
+            <li>Confirm page shows "0 papers"</li>
+            <li>Start re-uploading your papers</li>
         </ol>
 
         <div class="success">
-            <strong>🎉 清理完成后，你就可以：</strong><br>
-            • 重新批量上传PDF文件<br>
-            • 享受完整的GitHub同步功能<br>
-            • 分享链接给其他人查看最新内容
+            <strong>🎉 After cleanup is complete, you can:</strong><br>
+            • Re-upload PDF files in batches<br>
+            • Enjoy full GitHub sync functionality<br>
+            • Share links for others to view the latest content
         </div>
     </div>
 </body>
