@@ -208,6 +208,8 @@ class LiteratureManager {
         const fileHash = await this.generateFileHash(file);
         return this.papers.find(paper => paper.fileHash === fileHash);
     }
+    
+    setupEventListeners() {
         // Search functionality
         document.getElementById('searchInput').addEventListener('input', (e) => {
             this.filters.search = e.target.value.toLowerCase();
