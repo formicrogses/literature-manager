@@ -50,16 +50,15 @@ class LiteratureManager {
             this.storage = null;
         }
         
-        // Initialize GitHub sync if available
+        // Initialize Server API (replace GitHub sync)
         try {
-            if (typeof GitHubSync !== 'undefined') {
-                window.githubSync = new GitHubSync();
-                console.log('GitHub sync initialized');
+            if (typeof ServerAPI !== 'undefined' && window.serverAPI) {
+                console.log('Server API initialized successfully');
             } else {
-                console.warn('GitHubSync class not available');
+                console.warn('Server API not available');
             }
         } catch (error) {
-            console.warn('GitHub sync initialization failed:', error);
+            console.warn('Server API initialization failed:', error);
         }
         
         await this.loadData();
@@ -71,26 +70,26 @@ class LiteratureManager {
     async loadData() {
         let dataLoaded = false;
         
-        // 1. Priority 1: Load from GitHub data repository (main source of truth)
-        if (window.githubSync && window.githubSync.isConfigured()) {
+        // 1. Priority 1: Load from Server API (main source of truth)
+        if (window.serverAPI) {
             try {
-                console.log('Loading data from GitHub data repository...');
-                this.updateSyncBanner('Loading data from GitHub data repository...', 'loading');
-                const sharedPapers = await window.githubSync.loadSharedData();
-                if (sharedPapers && sharedPapers.length > 0) {
-                    this.papers = sharedPapers;
+                console.log('Loading data from server...');
+                this.updateSyncBanner('Loading data from server...', 'loading');
+                const serverPapers = await window.serverAPI.loadPapers();
+                if (serverPapers && serverPapers.length > 0) {
+                    this.papers = serverPapers;
                     this.filteredPapers = [...this.papers];
-                    console.log('Loaded', this.papers.length, 'papers from GitHub data repository');
+                    console.log('Loaded', this.papers.length, 'papers from server');
                     
                     setTimeout(() => {
-                        this.showNotification(`Loaded ${this.papers.length} papers from GitHub data repository`, 'success');
-                        this.updateSyncBanner(`Data loaded from GitHub repository - ${this.papers.length} papers total`, 'success');
+                        this.showNotification(`Loaded ${this.papers.length} papers from server`, 'success');
+                        this.updateSyncBanner(`Data loaded from server - ${this.papers.length} papers total`, 'success');
                     }, 500);
                     dataLoaded = true;
                 }
             } catch (error) {
-                console.error('Failed to load from GitHub data repository:', error);
-                this.showNotification('GitHub data repository access failed, trying fallback sources: ' + error.message, 'warning');
+                console.error('Failed to load from server:', error);
+                this.showNotification('Server access failed, trying local cache: ' + error.message, 'warning');
             }
         }
         
